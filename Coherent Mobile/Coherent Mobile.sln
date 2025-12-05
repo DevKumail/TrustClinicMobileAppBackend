@@ -1,0 +1,46 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35707.178
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoherentMobile.Api", "CoherentMobile.Api\CoherentMobile.Api.csproj", "{7366354D-EC30-46D6-8154-DFDABEBB7C6C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoherentMobile.Application", "CoherentMobile.Application\CoherentMobile.Application.csproj", "{91F761D4-D57E-43DA-BA74-D8070C429A57}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoherentMobile.Domain", "CoherentMobile.Domain\CoherentMobile.Domain.csproj", "{74248CEC-A4E2-48A7-B4CB-2BA871600FF6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoherentMobile.ExternalIntegration", "CoherentMobile.ExternalIntegration\CoherentMobile.ExternalIntegration.csproj", "{A53E7002-555F-449B-8DEF-428DEDBD0F29}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoherentMobile.Infrastructure", "CoherentMobile.Infrastructure\CoherentMobile.Infrastructure.csproj", "{649D6264-D2F0-4912-A02C-268D30F7984C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7366354D-EC30-46D6-8154-DFDABEBB7C6C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7366354D-EC30-46D6-8154-DFDABEBB7C6C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7366354D-EC30-46D6-8154-DFDABEBB7C6C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7366354D-EC30-46D6-8154-DFDABEBB7C6C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{91F761D4-D57E-43DA-BA74-D8070C429A57}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{91F761D4-D57E-43DA-BA74-D8070C429A57}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{91F761D4-D57E-43DA-BA74-D8070C429A57}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{91F761D4-D57E-43DA-BA74-D8070C429A57}.Release|Any CPU.Build.0 = Release|Any CPU
+		{74248CEC-A4E2-48A7-B4CB-2BA871600FF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{74248CEC-A4E2-48A7-B4CB-2BA871600FF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{74248CEC-A4E2-48A7-B4CB-2BA871600FF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{74248CEC-A4E2-48A7-B4CB-2BA871600FF6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A53E7002-555F-449B-8DEF-428DEDBD0F29}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A53E7002-555F-449B-8DEF-428DEDBD0F29}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A53E7002-555F-449B-8DEF-428DEDBD0F29}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A53E7002-555F-449B-8DEF-428DEDBD0F29}.Release|Any CPU.Build.0 = Release|Any CPU
+		{649D6264-D2F0-4912-A02C-268D30F7984C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{649D6264-D2F0-4912-A02C-268D30F7984C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{649D6264-D2F0-4912-A02C-268D30F7984C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{649D6264-D2F0-4912-A02C-268D30F7984C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

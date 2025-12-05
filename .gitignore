@@ -1,0 +1,18 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/Coherent Mobile/.vs
+/Coherent Mobile/CoherentMobile.Application/obj
+/Coherent Mobile/CoherentMobile.Application/bin
+/Coherent Mobile/CoherentMobile.Domain/bin
+/Coherent Mobile/CoherentMobile.Domain/obj
+/Coherent Mobile/CoherentMobile.ExternalIntegration/bin
+/Coherent Mobile/CoherentMobile.ExternalIntegration/obj
+/Coherent Mobile/Coherent.Domain/obj/Coherent.Domain.csproj.nuget.dgspec.json
+/Coherent Mobile/Coherent.Domain/obj/Coherent.Domain.csproj.nuget.g.props
+/Coherent Mobile/Coherent.Domain/obj/Coherent.Domain.csproj.nuget.g.targets
+/Coherent Mobile/Coherent.Domain/obj/project.assets.json
+/Coherent Mobile/Coherent.Domain/obj/project.nuget.cache
+/Coherent Mobile/CoherentMobile.Infrastructure/bin
+/Coherent Mobile/CoherentMobile.Infrastructure/obj

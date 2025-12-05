@@ -1,0 +1,241 @@
+###
+# Chat API Testing
+# Replace {token} with actual JWT token from login
+###
+
+@baseUrl = https://localhost:7162
+@token = YOUR_JWT_TOKEN_HERE
+@conversationId = 1
+
+###
+# 1. Get User Conversations
+###
+GET {{baseUrl}}/api/chat/conversations?pageNumber=1&pageSize=20
+Authorization: Bearer {{token}}
+
+### Expected Response:
+# {
+#   "conversations": [
+#     {
+#       "conversationId": 1,
+#       "conversationType": "OneToOne",
+#       "lastMessageAt": "2025-12-03T15:30:00Z",
+#       "lastMessage": "Hello doctor",
+#       "unreadCount": 3,
+#       "otherUserName": "Dr. Ahmed"
+#     }
+#   ],
+#   "totalCount": 10,
+#   "pageNumber": 1,
+#   "pageSize": 20
+# }
+
+###
+# 2. Create or Get Conversation
+###
+POST {{baseUrl}}/api/chat/conversations
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "otherUserId": 5,
+  "otherUserType": "Doctor",
+  "initialMessage": "Hello doctor, I need help"
+}
+
+### Expected Response:
+# {
+#   "conversationId": 1,
+#   "message": "Conversation created successfully"
+# }
+
+###
+# 3. Get Conversation Messages
+###
+GET {{baseUrl}}/api/chat/conversations/{{conversationId}}/messages?pageNumber=1&pageSize=50
+Authorization: Bearer {{token}}
+
+### Expected Response:
+# {
+#   "messages": [
+#     {
+#       "messageId": 123,
+#       "conversationId": 1,
+#       "senderId": 2,
+#       "senderType": "Patient",
+#       "senderName": "John Doe",
+#       "messageType": "Text",
+#       "content": "Hello doctor",
+#       "sentAt": "2025-12-03T15:30:00Z",
+#       "isDelivered": true,
+#       "isRead": false
+#     }
+#   ],
+#   "totalCount": 50,
+#   "pageNumber": 1
+# }
+
+###
+# 4. Send Text Message
+###
+POST {{baseUrl}}/api/chat/messages
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "conversationId": 1,
+  "messageType": "Text",
+  "content": "Hello doctor, I need help with my medication",
+  "replyToMessageId": null
+}
+
+### Expected Response:
+# {
+#   "messageId": 124,
+#   "conversationId": 1,
+#   "senderId": 2,
+#   "senderType": "Patient",
+#   "messageType": "Text",
+#   "content": "Hello doctor, I need help with my medication",
+#   "sentAt": "2025-12-03T15:31:00Z",
+#   "isDelivered": false,
+#   "isRead": false
+# }
+
+###
+# 5. Send Reply Message
+###
+POST {{baseUrl}}/api/chat/messages
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "conversationId": 1,
+  "messageType": "Text",
+  "content": "Thank you!",
+  "replyToMessageId": 123
+}
+
+###
+# 6. Upload Image
+###
+POST {{baseUrl}}/api/chat/upload
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
+
+------WebKitFormBoundary
+Content-Disposition: form-data; name="file"; filename="image.jpg"
+Content-Type: image/jpeg
+
+< ./path/to/image.jpg
+------WebKitFormBoundary--
+
+### Expected Response:
+# {
+#   "fileUrl": "/uploads/chat/abc123.jpg",
+#   "fileName": "image.jpg",
+#   "fileSize": 102400
+# }
+
+###
+# 7. Send Image Message
+###
+POST {{baseUrl}}/api/chat/messages
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "conversationId": 1,
+  "messageType": "Image",
+  "content": "Here is the prescription",
+  "fileUrl": "/uploads/chat/abc123.jpg",
+  "fileName": "prescription.jpg",
+  "fileSize": 102400
+}
+
+###
+# 8. Mark Messages as Read
+###
+POST {{baseUrl}}/api/chat/conversations/{{conversationId}}/mark-read
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+[123, 124, 125]
+
+### Expected Response:
+# {
+#   "success": true,
+#   "message": "Messages marked as read"
+# }
+
+###
+# 9. Delete Message
+###
+DELETE {{baseUrl}}/api/chat/messages/123
+Authorization: Bearer {{token}}
+
+### Expected Response:
+# {
+#   "success": true,
+#   "message": "Message deleted"
+# }
+
+###
+# 10. Get User Online Status
+###
+GET {{baseUrl}}/api/chat/users/5/status?userType=Doctor
+Authorization: Bearer {{token}}
+
+### Expected Response:
+# {
+#   "userId": 5,
+#   "userType": "Doctor",
+#   "isOnline": true
+# }
+
+###
+# ERROR TEST: Unauthorized Access
+###
+GET {{baseUrl}}/api/chat/conversations
+# No Authorization header
+
+### Expected Response:
+# 401 Unauthorized
+
+###
+# ERROR TEST: Invalid Conversation ID
+###
+GET {{baseUrl}}/api/chat/conversations/99999/messages
+Authorization: Bearer {{token}}
+
+### Expected Response:
+# {
+#   "messages": [],
+#   "totalCount": 0
+# }
+
+###
+# ERROR TEST: File Too Large
+###
+POST {{baseUrl}}/api/chat/upload
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data
+
+# Upload file > 10MB
+### Expected Response:
+# {
+#   "message": "File size exceeds 10MB limit"
+# }
+
+###
+# ERROR TEST: Invalid File Type
+###
+POST {{baseUrl}}/api/chat/upload
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data
+
+# Upload .exe file
+### Expected Response:
+# {
+#   "message": "File type not allowed"
+# }

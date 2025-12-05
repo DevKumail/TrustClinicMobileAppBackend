@@ -1,0 +1,155 @@
+Build a complete real-time chat system UI for a web portal with the following specifications:
+
+## Backend Details (Already Implemented):
+- API Base URL: https://localhost:7162
+- SignalR Hub URL: https://localhost:7162/chatHub
+- Authentication: JWT token in Authorization header
+
+## Features to Implement:
+
+1. Chat Layout:
+   - Left sidebar: Conversation list with unread badges
+   - Right area: Active chat window
+   - Responsive design (mobile: stack layout)
+
+2. Conversation List:
+   - GET /api/chat/conversations?pageNumber=1&pageSize=20
+   - Show user avatar, name, last message, timestamp
+   - Display unread count badge
+   - Online/offline status indicator
+   - Click to open conversation
+
+3. Chat Window:
+   - GET /api/chat/conversations/{id}/messages?pageNumber=1&pageSize=50
+   - Message bubbles (own messages: right/blue, others: left/gray)
+   - Display sender name, message content, timestamp
+   - Read receipts (✓ delivered, ✓✓ read)
+   - Auto-scroll to latest message
+   - Show typing indicator ("User is typing...")
+
+4. Message Input:
+   - Text input with send button
+   - POST /api/chat/messages with { conversationId, messageType: "Text", content }
+   - Detect typing and notify via SignalR
+   - Support Enter key to send
+   - File upload button (📎)
+
+5. File Upload:
+   - POST /api/chat/upload (multipart/form-data)
+   - Support images, PDFs, documents
+   - Max size: 10MB
+   - Preview uploaded images in chat
+
+6. Real-time SignalR Integration:
+   ```typescript
+   import * as signalR from "@microsoft/signalr";
+   
+   const connection = new signalR.HubConnectionBuilder()
+     .withUrl("https://localhost:7162/chatHub", {
+       accessTokenFactory: () => localStorage.getItem("authToken")
+     })
+     .withAutomaticReconnect()
+     .build();
+   
+   await connection.start();
+   
+   // Join conversation
+   await connection.invoke("JoinConversation", conversationId);
+   
+   // Send message
+   await connection.invoke("SendMessage", {
+     conversationId: 1,
+     messageType: "Text",
+     content: "Hello"
+   });
+   
+   // Listen for new messages
+   connection.on("ReceiveMessage", (message) => {
+     // Add to UI and play notification sound
+   });
+   
+   // Listen for typing
+   connection.on("UserTyping", (convId, userId, userName, isTyping) => {
+     // Show/hide typing indicator
+   });
+   
+   // Update typing status
+   await connection.invoke("UpdateTypingStatus", conversationId, true/false);
+   
+   // Online/offline status
+   connection.on("UserOnline", (userId, userType) => { });
+   connection.on("UserOffline", (userId, userType, lastSeenAt) => { });
+   
+   // Read receipts
+   connection.on("MessageRead", (messageId, userId, userType, readAt) => { });
+   ```
+
+7. Additional Features:
+   - Mark messages as read: POST /api/chat/conversations/{id}/mark-read
+   - Delete message: DELETE /api/chat/messages/{id}
+   - Notification sound on new message
+   - Reply to message functionality
+   - Image preview modal
+   - Loading states and error handling
+
+## Technical Requirements:
+- Use existing tech stack (React/Angular/Vue)
+- Install: npm install @microsoft/signalr
+- Use Tailwind CSS / Material UI / Bootstrap (whatever exists)
+- TypeScript preferred
+- Responsive design
+
+## Component Structure:
+1. ChatLayout - Main container
+2. ChatSidebar - Conversation list
+3. ConversationItem - Single conversation
+4. ChatWindow - Main chat area
+5. ChatHeader - User info header
+6. MessageList - Scrollable messages
+7. MessageBubble - Single message
+8. MessageInput - Input with send button
+9. TypingIndicator - Typing animation
+10. FileUpload - File/image upload
+11. ImagePreview - Image preview modal
+
+## API Response Examples:
+
+Conversations:
+```json
+{
+  "conversations": [{
+    "conversationId": 1,
+    "lastMessage": "Hello",
+    "lastMessageAt": "2025-12-03T15:30:00Z",
+    "unreadCount": 3,
+    "otherUserName": "Dr. Ahmed",
+    "otherUserIsOnline": true
+  }]
+}
+```
+
+Messages:
+```json
+{
+  "messages": [{
+    "messageId": 123,
+    "senderId": 2,
+    "senderName": "John",
+    "messageType": "Text",
+    "content": "Hello",
+    "sentAt": "2025-12-03T15:30:00Z",
+    "isDelivered": true,
+    "isRead": false
+  }]
+}
+```
+
+## Design Guidelines:
+- Own messages: Right-aligned, blue (#3B82F6)
+- Other messages: Left-aligned, gray (#E5E7EB)
+- Message bubbles: Max 70% width, rounded corners
+- Online indicator: Green dot
+- Unread badge: Red circle with count
+- Typing indicator: Animated dots
+
+Create a modern, beautiful, fully functional real-time chat system with smooth animations and excellent UX. Make it production-ready!
