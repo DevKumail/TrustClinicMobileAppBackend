@@ -8,6 +8,6 @@ namespace CoherentMobile.ExternalIntegration.Interfaces
     public interface IAppointmentApiClient
     {
         Task<IEnumerable<Appointment>> GetAppointmentsByMrnoAsync(string mrno);
-        Task<DoctorSlotsApiResponse> GetAvailableDoctorSlotsAsync(int doctorId, string prsnlAlias, DateTime fromDate, DateTime toDate);
+        Task<DoctorSlotsApiResponse> GetAvailableDoctorSlotsAsync( string prsnlAlias, DateTime fromDate, DateTime toDate);
     }
 }

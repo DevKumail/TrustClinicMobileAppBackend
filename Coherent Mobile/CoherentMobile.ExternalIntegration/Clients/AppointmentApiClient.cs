@@ -52,19 +52,18 @@ namespace CoherentMobile.ExternalIntegration.Clients
             }
         }
 
-        public async Task<DoctorSlotsApiResponse> GetAvailableDoctorSlotsAsync(int doctorId, string prsnlAlias, DateTime fromDate, DateTime toDate)
+        public async Task<DoctorSlotsApiResponse> GetAvailableDoctorSlotsAsync(string prsnlAlias, DateTime fromDate, DateTime toDate)
         {
             try
             {
                 _logger.LogInformation("Fetching available slots for doctor: {DoctorId}, Alias: {PrsnlAlias}, From: {FromDate}, To: {ToDate}", 
-                    doctorId, prsnlAlias, fromDate, toDate);
+                     prsnlAlias, fromDate, toDate);
 
                 var fromDateStr = fromDate.ToString("MM-dd-yyyy");
                 var toDateStr = toDate.ToString("MM-dd-yyyy");
                 
                 var response = await _httpClient.GetAsync(
                     $"{_baseUrl}/Appointments/GetAvailableSlotOfDoctor?" +
-                    $"doctorId={doctorId}&" +
                     $"prsnlAlias={Uri.EscapeDataString(prsnlAlias)}&" +
                     $"fromDate={fromDateStr}&" +
                     $"toDate={toDateStr}");
@@ -83,7 +82,7 @@ namespace CoherentMobile.ExternalIntegration.Clients
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching available slots for doctor: {DoctorId}", doctorId);
+                _logger.LogError(ex, "Error fetching available slots for doctor: {prsnlAlias}", prsnlAlias);
                 throw new ApplicationException($"Failed to fetch available slots: {ex.Message}", ex);
             }
         }

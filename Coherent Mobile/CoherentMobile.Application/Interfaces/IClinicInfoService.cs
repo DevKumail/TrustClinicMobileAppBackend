@@ -11,4 +11,5 @@ public interface IClinicInfoService
     /// Get complete clinic information including doctors and services
     /// </summary>
     Task<ClinicInfoDto> GetClinicInfoAsync();
+    Task<IEnumerable<DoctorDto>> GetDoctorsAsync();
 }

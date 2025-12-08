@@ -1,24 +1,23 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
-using CoherentMobile.API.Models;
 using CoherentMobile.Application.DTOs.Clinic;
 using CoherentMobile.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
-namespace CoherentMobile.API.Controllers
+namespace CoherentMobile.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     public class DoctorsController : ControllerBase
     {
-        private readonly IDoctorService _doctorService;
+        private readonly IClinicInfoService _clinicInfoService;
         private readonly ILogger<DoctorsController> _logger;
 
-        public DoctorsController(IDoctorService doctorService, ILogger<DoctorsController> logger)
+        public DoctorsController(IClinicInfoService clinicInfoService, ILogger<DoctorsController> logger)
         {
-            _doctorService = doctorService;
+            _clinicInfoService = clinicInfoService;
             _logger = logger;
         }
 
@@ -29,22 +28,8 @@ namespace CoherentMobile.API.Controllers
 
             try
             {
-                var doctors = await _doctorService.GetAllDoctorsAsync();
-
-                var result = new List<DoctorDto>();
-                foreach (var doctor in doctors)
-                {
-                    result.Add(new DoctorDto
-                    {
-                        Id = doctor.DoctorId,
-                        Name = doctor.Name,
-                        Specialization = doctor.Specialization,
-                        Email = doctor.Email,
-                        Phone = doctor.Phone
-                    });
-                }
-
-                return Ok(result);
+                var doctors = await _clinicInfoService.GetDoctorsAsync();
+                return Ok(doctors);
             }
             catch (Exception ex)
             {

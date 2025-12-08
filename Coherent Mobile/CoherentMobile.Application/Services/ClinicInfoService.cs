@@ -162,4 +162,66 @@ public class ClinicInfoService : IClinicInfoService
             throw;
         }
     }
+
+    public async Task<IEnumerable<DoctorDto>> GetDoctorsAsync()
+    {
+        try
+        {
+            const int facilityId = 1;
+
+            var imageBaseUrl = _configuration["ImageSettings:BaseUrl"] ?? "https://localhost:7162/images";
+            var doctorImagesPath = _configuration["ImageSettings:DoctorImagesPath"] ?? "doctors";
+
+            var facility = await _facilityRepo.GetByIdAsync(facilityId);
+            if (facility == null)
+            {
+                _logger.LogWarning("Facility with ID {FacilityId} not found", facilityId);
+                throw new Exception("Clinic information not found");
+            }
+
+            var doctors = await _doctorRepo.GetByFacilityIdAsync(facilityId);
+            var doctorDtos = new List<DoctorDto>();
+
+            foreach (var doctor in doctors)
+            {
+                var speciality = doctor.SPId.HasValue
+                    ? await _specialityRepo.GetByIdAsync(doctor.SPId.Value)
+                    : null;
+
+                var languages = string.IsNullOrEmpty(doctor.Languages)
+                    ? new List<string>()
+                    : doctor.Languages.Split(',').Select(l => l.Trim()).ToList();
+
+                var doctorLocation = new List<string> { facility.City ?? "Abu Dhabi" };
+
+                doctorDtos.Add(new DoctorDto
+                {
+                    Id = doctor.DId,
+                    Name = doctor.DoctorName ?? string.Empty,
+                    Position = doctor.Title ?? string.Empty,
+                    Speciality = speciality?.SpecilityName ?? string.Empty,
+                    ProvNPI = doctor.LicenceNo ?? string.Empty,
+                    Experience = !string.IsNullOrEmpty(doctor.YearsOfExperience)
+                        ? $"{doctor.YearsOfExperience} Years of Experience"
+                        : string.Empty,
+                    Nationality = doctor.Nationality ?? string.Empty,
+                    Languages = languages,
+                    Location = doctorLocation,
+                    ImageUrl = !string.IsNullOrEmpty(doctor.DoctorPhotoName)
+                        ? $"{imageBaseUrl}/{doctorImagesPath}/{doctor.DoctorPhotoName}"
+                        : string.Empty,
+                    Biography = doctor.About ?? string.Empty
+                });
+            }
+
+            _logger.LogInformation("Doctors retrieved successfully. Count: {DoctorCount}", doctorDtos.Count);
+
+            return doctorDtos;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving doctors");
+            throw;
+        }
+    }
 }

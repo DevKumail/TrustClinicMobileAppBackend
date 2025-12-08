@@ -112,19 +112,18 @@ public class IntegrationController : ControllerBase
     /// <param name="fromDate">Start date for slot search</param>
     /// <param name="toDate">End date for slot search</param>
     /// <returns>List of available time slots</returns>
-    [HttpGet("doctors/{doctorId}/slots")]
+    [HttpGet("doctors/slots")]
     public async Task<ActionResult<DoctorSlotsApiResponse>> GetDoctorSlots(
-        int doctorId, 
         [FromQuery] string prsnlAlias,
         [FromQuery] DateTime fromDate,
         [FromQuery] DateTime toDate)
     {
-        _logger.LogInformation("Getting available slots for doctor {DoctorId}", doctorId);
+        _logger.LogInformation("Getting available slots for doctor {prsnlAlias}", prsnlAlias);
         
         try
         {
             var result = await _appointmentApiClient.GetAvailableDoctorSlotsAsync(
-                doctorId, 
+            
                 prsnlAlias,
                 fromDate,
                 toDate);
@@ -133,7 +132,7 @@ public class IntegrationController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting available slots for doctor {DoctorId}", doctorId);
+            _logger.LogError(ex, "Error getting available slots for doctor {prsnlAlias}", prsnlAlias);
             return StatusCode(500, new { error = "Failed to fetch available slots. Please try again later." });
         }
     }
