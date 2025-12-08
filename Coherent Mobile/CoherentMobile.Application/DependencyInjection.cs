@@ -17,10 +17,11 @@ public static class DependencyInjection
     {
         // Register services
         services.AddScoped<IAuthenticationService, AuthenticationService>();
-        services.AddScoped<IAuthService, AuthService>();
+        // services.AddScoped<IAuthService, AuthService>(); // Unused legacy service - uses User entity instead of Patient
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IHealthRecordService, HealthRecordService>();
         services.AddScoped<IClinicInfoService, ClinicInfoService>();
+        services.AddScoped<IChatService, ChatService>();
 
         // Register helpers
         services.AddScoped<JwtTokenGenerator>();

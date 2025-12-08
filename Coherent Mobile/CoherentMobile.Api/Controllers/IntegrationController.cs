@@ -16,15 +16,18 @@ public class IntegrationController : ControllerBase
 {
     private readonly IHealthDataApiClient _healthDataApiClient;
     private readonly INotificationApiClient _notificationApiClient;
+    private readonly IAppointmentApiClient _appointmentApiClient;
     private readonly ILogger<IntegrationController> _logger;
 
     public IntegrationController(
         IHealthDataApiClient healthDataApiClient,
         INotificationApiClient notificationApiClient,
+        IAppointmentApiClient appointmentApiClient,
         ILogger<IntegrationController> logger)
     {
         _healthDataApiClient = healthDataApiClient;
         _notificationApiClient = notificationApiClient;
+        _appointmentApiClient = appointmentApiClient;
         _logger = logger;
     }
 
@@ -72,18 +75,76 @@ public class IntegrationController : ControllerBase
     {
         _logger.LogInformation("Sending notification to {Email}", request.RecipientEmail);
 
-        var response = await _notificationApiClient.SendEmailNotificationAsync(request);
-        if (!response.Success)
-        {
-            return StatusCode(500, new { error = "Failed to send notification", details = response.Status });
-        }
-
-        return Ok(response);
+        // Set the user ID in the request if needed
+        // request.UserId = GetCurrentUserId().ToString();
+        
+        // Use the SendEmailNotificationAsync method which matches the request object
+        return Ok(await _notificationApiClient.SendEmailNotificationAsync(request));
     }
 
-    private Guid GetCurrentUserId()
+    /// <summary>
+    /// Get appointments by MRNO from external system
+    /// </summary>
+    /// <param name="mrno">Medical Record Number</param>
+    /// <returns>List of appointments</returns>
+    [HttpGet("appointments/{mrno}")]
+    public async Task<ActionResult<IEnumerable<Appointment>>> GetAppointmentsByMrno(string mrno)
+    {
+        _logger.LogInformation("Fetching appointments for MRNO: {Mrno}", mrno);
+
+        try
+        {
+            var appointments = await _appointmentApiClient.GetAppointmentsByMrnoAsync(mrno);
+            return Ok(appointments);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching appointments for MRNO: {Mrno}", mrno);
+            return StatusCode(500, new { error = "Failed to fetch appointments. Please try again later." });
+        }
+    }
+
+    /// <summary>
+    /// Get available time slots for a doctor
+    /// </summary>
+    /// <param name="doctorId">ID of the doctor</param>
+    /// <param name="prsnlAlias">Personnel alias of the doctor</param>
+    /// <param name="fromDate">Start date for slot search</param>
+    /// <param name="toDate">End date for slot search</param>
+    /// <returns>List of available time slots</returns>
+    [HttpGet("doctors/{doctorId}/slots")]
+    public async Task<ActionResult<DoctorSlotsApiResponse>> GetDoctorSlots(
+        int doctorId, 
+        [FromQuery] string prsnlAlias,
+        [FromQuery] DateTime fromDate,
+        [FromQuery] DateTime toDate)
+    {
+        _logger.LogInformation("Getting available slots for doctor {DoctorId}", doctorId);
+        
+        try
+        {
+            var result = await _appointmentApiClient.GetAvailableDoctorSlotsAsync(
+                doctorId, 
+                prsnlAlias,
+                fromDate,
+                toDate);
+                
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting available slots for doctor {DoctorId}", doctorId);
+            return StatusCode(500, new { error = "Failed to fetch available slots. Please try again later." });
+        }
+    }
+
+    private int GetCurrentUserId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return Guid.Parse(userIdClaim ?? throw new UnauthorizedAccessException("User ID not found in token"));
+        if (int.TryParse(userIdClaim, out int userId))
+        {
+            return userId;
+        }
+        throw new UnauthorizedAccessException("User ID not found in token");
     }
 }

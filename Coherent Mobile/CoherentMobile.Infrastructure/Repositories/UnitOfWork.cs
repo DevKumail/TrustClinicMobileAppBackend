@@ -15,12 +15,14 @@ public class UnitOfWork : IUnitOfWork
     private bool _disposed;
 
     public IUserRepository Users { get; }
+    public IPatientRepository Patients { get; }
     public IHealthRecordRepository HealthRecords { get; }
 
-    public UnitOfWork(DapperContext context, IUserRepository userRepository, IHealthRecordRepository healthRecordRepository)
+    public UnitOfWork(DapperContext context, IUserRepository userRepository, IPatientRepository patientRepository, IHealthRecordRepository healthRecordRepository)
     {
         _context = context;
         Users = userRepository;
+        Patients = patientRepository;
         HealthRecords = healthRecordRepository;
     }
 

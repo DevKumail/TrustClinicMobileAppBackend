@@ -17,7 +17,7 @@ public class HealthRecordService : IHealthRecordService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<HealthRecordDto> CreateHealthRecordAsync(Guid userId, CreateHealthRecordDto createDto)
+    public async Task<HealthRecordDto> CreateHealthRecordAsync(int userId, CreateHealthRecordDto createDto)
     {
         var healthRecord = new HealthRecord
         {
@@ -37,26 +37,26 @@ public class HealthRecordService : IHealthRecordService
         return MapToDto(healthRecord);
     }
 
-    public async Task<IEnumerable<HealthRecordDto>> GetUserHealthRecordsAsync(Guid userId)
+    public async Task<IEnumerable<HealthRecordDto>> GetUserHealthRecordsAsync(int userId)
     {
         var records = await _unitOfWork.HealthRecords.GetByUserIdAsync(userId);
         return records.Select(MapToDto);
     }
 
-    public async Task<IEnumerable<HealthRecordDto>> GetHealthRecordsByTypeAsync(Guid userId, string recordType)
+    public async Task<IEnumerable<HealthRecordDto>> GetHealthRecordsByTypeAsync(int userId, string recordType)
     {
         var records = await _unitOfWork.HealthRecords.GetByUserIdAndTypeAsync(userId, recordType);
         return records.Select(MapToDto);
     }
 
     public async Task<IEnumerable<HealthRecordDto>> GetHealthRecordsByDateRangeAsync(
-        Guid userId, DateTime startDate, DateTime endDate)
+        int userId, DateTime startDate, DateTime endDate)
     {
         var records = await _unitOfWork.HealthRecords.GetByDateRangeAsync(userId, startDate, endDate);
         return records.Select(MapToDto);
     }
 
-    public async Task<bool> DeleteHealthRecordAsync(Guid recordId, Guid userId)
+    public async Task<bool> DeleteHealthRecordAsync(Guid recordId, int userId)
     {
         var record = await _unitOfWork.HealthRecords.GetByIdAsync(recordId);
         

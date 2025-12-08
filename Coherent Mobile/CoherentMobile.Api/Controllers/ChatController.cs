@@ -190,8 +190,11 @@ namespace CoherentMobile.Api.Controllers
         /// Upload file for chat (images, documents)
         /// </summary>
         [HttpPost("upload")]
-        [ProducesResponseType(200)]
-        public async Task<IActionResult> UploadFile([FromForm] IFormFile file)
+        [Consumes("multipart/form-data")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(typeof(object), 400)]
+        [ProducesResponseType(typeof(object), 500)]
+        public async Task<IActionResult> UploadFile(IFormFile file)
         {
             try
             {

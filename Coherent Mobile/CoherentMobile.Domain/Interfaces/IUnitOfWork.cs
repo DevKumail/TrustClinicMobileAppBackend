@@ -6,6 +6,7 @@ namespace CoherentMobile.Domain.Interfaces;
 public interface IUnitOfWork : IDisposable
 {
     IUserRepository Users { get; }
+    IPatientRepository Patients { get; }
     IHealthRecordRepository HealthRecords { get; }
     Task<int> CommitAsync();
     Task BeginTransactionAsync();

@@ -26,73 +26,16 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterUserDto registerDto)
     {
-        // Check if email already exists
-        if (await _unitOfWork.Users.EmailExistsAsync(registerDto.Email))
-        {
-            throw new InvalidOperationException("Email already registered");
-        }
-
-        // Hash password (In production, use BCrypt or similar)
-        var passwordHash = HashPassword(registerDto.Password);
-
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            Email = registerDto.Email,
-            PasswordHash = passwordHash,
-            FirstName = registerDto.FirstName,
-            LastName = registerDto.LastName,
-            PhoneNumber = registerDto.PhoneNumber,
-            DateOfBirth = registerDto.DateOfBirth,
-            Gender = registerDto.Gender,
-            IsEmailVerified = false,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        await _unitOfWork.Users.AddAsync(user);
-        await _unitOfWork.CommitAsync();
-
-        var token = GenerateJwtToken(user.Id, user.Email);
-        var expiresAt = DateTime.UtcNow.AddHours(GetTokenExpiryHours());
-
-        return new AuthResponseDto
-        {
-            UserId = user.Id,
-            Email = user.Email,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            Token = token,
-            ExpiresAt = expiresAt
-        };
+        // This service is deprecated. Use IAuthenticationService instead.
+        await Task.CompletedTask;
+        throw new NotImplementedException("This service is deprecated. Use IAuthenticationService with Patient entity instead.");
     }
 
     public async Task<AuthResponseDto> LoginAsync(LoginDto loginDto)
     {
-        var user = await _unitOfWork.Users.GetByEmailAsync(loginDto.Email);
-        
-        if (user == null || !VerifyPassword(loginDto.Password, user.PasswordHash))
-        {
-            throw new UnauthorizedAccessException("Invalid email or password");
-        }
-
-        if (!user.IsActive)
-        {
-            throw new UnauthorizedAccessException("Account is deactivated");
-        }
-
-        var token = GenerateJwtToken(user.Id, user.Email);
-        var expiresAt = DateTime.UtcNow.AddHours(GetTokenExpiryHours());
-
-        return new AuthResponseDto
-        {
-            UserId = user.Id,
-            Email = user.Email,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            Token = token,
-            ExpiresAt = expiresAt
-        };
+        // This service is deprecated. Use IAuthenticationService instead.
+        await Task.CompletedTask;
+        throw new NotImplementedException("This service is deprecated. Use IAuthenticationService with Patient entity instead.");
     }
 
     public Task<bool> ValidateTokenAsync(string token)
@@ -122,7 +65,7 @@ public class AuthService : IAuthService
         }
     }
 
-    public string GenerateJwtToken(Guid userId, string email)
+    public string GenerateJwtToken(int userId, string email)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Secret"] ?? "YourSuperSecretKeyMinimum32Characters!!");

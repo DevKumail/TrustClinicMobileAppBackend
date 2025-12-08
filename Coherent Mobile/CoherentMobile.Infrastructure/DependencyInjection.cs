@@ -30,6 +30,9 @@ public static class DependencyInjection
         services.AddScoped<IServiceRepository, ServiceRepository>();
         services.AddScoped<ISpecialityRepository, SpecialityRepository>();
         
+        // Register chat repositories
+        services.AddScoped<IChatRepository, ChatRepository>();
+        
         // Register legacy repositories (if still needed)
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IHealthRecordRepository, HealthRecordRepository>();

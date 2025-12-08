@@ -7,8 +7,8 @@ namespace CoherentMobile.Application.Interfaces;
 /// </summary>
 public interface IUserService
 {
-    Task<UserProfileDto?> GetUserProfileAsync(Guid userId);
+    Task<UserProfileDto?> GetUserProfileAsync(int userId);
     Task<IEnumerable<UserProfileDto>> GetAllUsersAsync();
-    Task<bool> UpdateUserProfileAsync(Guid userId, UserProfileDto profileDto);
-    Task<bool> DeactivateUserAsync(Guid userId);
+    Task<bool> UpdateUserProfileAsync(int userId, UserProfileDto profileDto);
+    Task<bool> DeactivateUserAsync(int userId);
 }

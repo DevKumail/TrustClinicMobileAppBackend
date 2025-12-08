@@ -16,9 +16,9 @@ public class UserService : IUserService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<UserProfileDto?> GetUserProfileAsync(Guid userId)
+    public async Task<UserProfileDto?> GetUserProfileAsync(int userId)
     {
-        var user = await _unitOfWork.Users.GetByIdAsync(userId);
+        var user = await _unitOfWork.Patients.GetByIdAsync(userId);
         
         if (user == null)
             return null;
@@ -26,56 +26,54 @@ public class UserService : IUserService
         return new UserProfileDto
         {
             Id = user.Id,
-            Email = user.Email,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            PhoneNumber = user.PhoneNumber,
+            Email = user.Email ?? string.Empty,
+            FirstName = user.FullName.Split(' ').FirstOrDefault() ?? string.Empty,
+            LastName = user.FullName.Split(' ').Skip(1).FirstOrDefault() ?? string.Empty,
+            PhoneNumber = user.MobileNumber,
             DateOfBirth = user.DateOfBirth,
-            Gender = user.Gender,
+            Gender = string.Empty,
             IsEmailVerified = user.IsEmailVerified
         };
     }
 
     public async Task<IEnumerable<UserProfileDto>> GetAllUsersAsync()
     {
-        var users = await _unitOfWork.Users.GetActiveUsersAsync();
+        var users = await _unitOfWork.Patients.GetActivePatientsAsync();
         
         return users.Select(u => new UserProfileDto
         {
             Id = u.Id,
-            Email = u.Email,
-            FirstName = u.FirstName,
-            LastName = u.LastName,
-            PhoneNumber = u.PhoneNumber,
+            Email = u.Email ?? string.Empty,
+            FirstName = u.FullName.Split(' ').FirstOrDefault() ?? string.Empty,
+            LastName = u.FullName.Split(' ').Skip(1).FirstOrDefault() ?? string.Empty,
+            PhoneNumber = u.MobileNumber,
             DateOfBirth = u.DateOfBirth,
-            Gender = u.Gender,
+            Gender = string.Empty,
             IsEmailVerified = u.IsEmailVerified
         });
     }
 
-    public async Task<bool> UpdateUserProfileAsync(Guid userId, UserProfileDto profileDto)
+    public async Task<bool> UpdateUserProfileAsync(int userId, UserProfileDto profileDto)
     {
-        var user = await _unitOfWork.Users.GetByIdAsync(userId);
+        var user = await _unitOfWork.Patients.GetByIdAsync(userId);
         
         if (user == null)
             return false;
 
-        user.FirstName = profileDto.FirstName;
-        user.LastName = profileDto.LastName;
-        user.PhoneNumber = profileDto.PhoneNumber;
-        user.DateOfBirth = profileDto.DateOfBirth;
-        user.Gender = profileDto.Gender;
+        user.FullName = $"{profileDto.FirstName} {profileDto.LastName}".Trim();
+        user.MobileNumber = profileDto.PhoneNumber;
+        user.DateOfBirth = profileDto.DateOfBirth ?? DateTime.UtcNow;
         user.UpdatedAt = DateTime.UtcNow;
 
-        await _unitOfWork.Users.UpdateAsync(user);
+        await _unitOfWork.Patients.UpdateAsync(user);
         await _unitOfWork.CommitAsync();
 
         return true;
     }
 
-    public async Task<bool> DeactivateUserAsync(Guid userId)
+    public async Task<bool> DeactivateUserAsync(int userId)
     {
-        var user = await _unitOfWork.Users.GetByIdAsync(userId);
+        var user = await _unitOfWork.Patients.GetByIdAsync(userId);
         
         if (user == null)
             return false;
@@ -83,7 +81,7 @@ public class UserService : IUserService
         user.IsActive = false;
         user.UpdatedAt = DateTime.UtcNow;
 
-        await _unitOfWork.Users.UpdateAsync(user);
+        await _unitOfWork.Patients.UpdateAsync(user);
         await _unitOfWork.CommitAsync();
 
         return true;

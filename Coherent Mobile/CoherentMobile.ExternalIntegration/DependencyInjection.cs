@@ -1,6 +1,9 @@
 using CoherentMobile.ExternalIntegration.Clients;
 using CoherentMobile.ExternalIntegration.Interfaces;
+using CoherentMobile.ExternalIntegration.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Polly;
 
 namespace CoherentMobile.ExternalIntegration;
@@ -11,16 +14,28 @@ namespace CoherentMobile.ExternalIntegration;
 /// </summary>
 public static class DependencyInjection
 {
-    public static IServiceCollection AddExternalIntegrationServices(this IServiceCollection services)
+    public static IServiceCollection AddExternalIntegrationServices(this IServiceCollection services, IConfiguration configuration)
     {
+        // Register configuration
+        services.Configure<AppointmentsApiSettings>(configuration.GetSection("AppointmentsApi"));
+
         // Register HTTP clients with typed clients pattern
         services.AddHttpClient<IHealthDataApiClient, HealthDataApiClient>()
-            .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set handler lifetime
+            .SetHandlerLifetime(TimeSpan.FromMinutes(5))
             .AddPolicyHandler(GetRetryPolicy());
 
         services.AddHttpClient<INotificationApiClient, NotificationApiClient>()
             .SetHandlerLifetime(TimeSpan.FromMinutes(5))
             .AddPolicyHandler(GetRetryPolicy());
+            
+        // Configure AppointmentApiClient with base URL from configuration
+        services.AddHttpClient<IAppointmentApiClient, AppointmentApiClient>((serviceProvider, httpClient) =>
+        {
+            var settings = serviceProvider.GetRequiredService<IOptions<AppointmentsApiSettings>>().Value;
+            httpClient.BaseAddress = new Uri(settings.BaseUrl);
+        })
+        .SetHandlerLifetime(TimeSpan.FromMinutes(5))
+        .AddPolicyHandler(GetRetryPolicy());
 
         return services;
     }

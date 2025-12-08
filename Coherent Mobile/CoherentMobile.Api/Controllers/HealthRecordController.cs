@@ -108,9 +108,13 @@ public class HealthRecordController : ControllerBase
         return Ok(new { message = "Health record deleted successfully" });
     }
 
-    private Guid GetCurrentUserId()
+    private int GetCurrentUserId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return Guid.Parse(userIdClaim ?? throw new UnauthorizedAccessException("User ID not found in token"));
+        if (int.TryParse(userIdClaim, out int userId))
+        {
+            return userId;
+        }
+        throw new UnauthorizedAccessException("User ID not found in token");
     }
 }

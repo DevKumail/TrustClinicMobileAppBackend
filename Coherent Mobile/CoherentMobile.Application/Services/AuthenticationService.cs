@@ -377,6 +377,7 @@ public class AuthenticationService : IAuthenticationService
             // Generate JWT tokens
             var accessToken = _jwtGenerator.GenerateAccessToken(
                 patient.Id,
+                
                 patient.MRNO,
                 patient.FullName,
                 patient.Email ?? string.Empty
@@ -395,6 +396,7 @@ public class AuthenticationService : IAuthenticationService
                 PatientId = patient.Id,
                 MRNO = patient.MRNO,
                 FullName = patient.FullName,
+                Gender = patient.Gender,
                 MobileNumber = patient.MobileNumber,
                 Email = patient.Email,
                 AccessToken = accessToken,

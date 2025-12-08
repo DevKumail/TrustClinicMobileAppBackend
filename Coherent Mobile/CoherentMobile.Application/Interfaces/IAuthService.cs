@@ -10,5 +10,5 @@ public interface IAuthService
     Task<AuthResponseDto> RegisterAsync(RegisterUserDto registerDto);
     Task<AuthResponseDto> LoginAsync(LoginDto loginDto);
     Task<bool> ValidateTokenAsync(string token);
-    string GenerateJwtToken(Guid userId, string email);
+    string GenerateJwtToken(int userId, string email);
 }

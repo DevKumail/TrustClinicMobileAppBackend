@@ -41,7 +41,8 @@ public class Patient
     public DateTime? UpdatedAt { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
-    
+    public string Gender { get; set; }
+
     // Navigation Properties
     public ICollection<OTPVerification> OTPVerifications { get; set; } = new List<OTPVerification>();
     public ICollection<LoginSession> LoginSessions { get; set; } = new List<LoginSession>();

@@ -18,7 +18,7 @@ public class CreateHealthRecordDto
 public class HealthRecordDto
 {
     public Guid Id { get; set; }
-    public Guid UserId { get; set; }
+    public int UserId { get; set; }
     public string RecordType { get; set; } = string.Empty;
     public string Value { get; set; } = string.Empty;
     public string Unit { get; set; } = string.Empty;

@@ -32,7 +32,7 @@ builder.Services.AddFluentValidationAutoValidation()
 // Add Layer Dependencies
 builder.Services.AddApplicationServices();      // Application layer
 builder.Services.AddInfrastructureServices();   // Infrastructure layer
-builder.Services.AddExternalIntegrationServices(); // External integration layer
+builder.Services.AddExternalIntegrationServices(builder.Configuration); // External integration layer
 
 // ===== JWT Authentication Configuration =====
 var jwtSettings = builder.Configuration.GetSection("Jwt");

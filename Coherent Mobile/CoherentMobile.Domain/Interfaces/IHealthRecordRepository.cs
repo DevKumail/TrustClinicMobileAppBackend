@@ -7,7 +7,7 @@ namespace CoherentMobile.Domain.Interfaces;
 /// </summary>
 public interface IHealthRecordRepository : IRepository<HealthRecord>
 {
-    Task<IEnumerable<HealthRecord>> GetByUserIdAsync(Guid userId);
-    Task<IEnumerable<HealthRecord>> GetByUserIdAndTypeAsync(Guid userId, string recordType);
-    Task<IEnumerable<HealthRecord>> GetByDateRangeAsync(Guid userId, DateTime startDate, DateTime endDate);
+    Task<IEnumerable<HealthRecord>> GetByUserIdAsync(int userId);
+    Task<IEnumerable<HealthRecord>> GetByUserIdAndTypeAsync(int userId, string recordType);
+    Task<IEnumerable<HealthRecord>> GetByDateRangeAsync(int userId, DateTime startDate, DateTime endDate);
 }
