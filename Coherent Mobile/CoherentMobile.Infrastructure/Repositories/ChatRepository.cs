@@ -195,10 +195,10 @@ namespace CoherentMobile.Infrastructure.Repositories
                 USING (SELECT @UserId AS UserId, @UserType AS UserType) AS source
                 ON (target.UserId = source.UserId AND target.UserType = source.UserType)
                 WHEN MATCHED THEN
-                    UPDATE SET IsOnline = @IsOnline, LastSeenAt = GETUTCDATE(), ConnectionId = @ConnectionId, DeviceType = @DeviceType
+                    UPDATE SET IsOnline = @IsOnline, LastSeen = GETUTCDATE()
                 WHEN NOT MATCHED THEN
-                    INSERT (UserId, UserType, IsOnline, LastSeenAt, ConnectionId, DeviceType)
-                    VALUES (@UserId, @UserType, @IsOnline, GETUTCDATE(), @ConnectionId, @DeviceType);";
+                    INSERT (UserId, UserType, IsOnline, LastSeen)
+                    VALUES (@UserId, @UserType, @IsOnline, GETUTCDATE());";
             
             await connection.ExecuteAsync(sql, new { UserId = userId, UserType = userType, IsOnline = isOnline, ConnectionId = connectionId, DeviceType = deviceType });
         }
@@ -213,7 +213,7 @@ namespace CoherentMobile.Infrastructure.Repositories
         public async Task<DateTime?> GetUserLastSeenAsync(int userId, string userType)
         {
             using var connection = CreateConnection();
-            var sql = @"SELECT LastSeenAt FROM MUserStatus WHERE UserId = @UserId AND UserType = @UserType";
+            var sql = @"SELECT LastSeen FROM MUserStatus WHERE UserId = @UserId AND UserType = @UserType";
             return await connection.ExecuteScalarAsync<DateTime?>(sql, new { UserId = userId, UserType = userType });
         }
     }

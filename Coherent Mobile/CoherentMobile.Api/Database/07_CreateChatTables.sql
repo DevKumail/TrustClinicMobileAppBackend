@@ -3,7 +3,7 @@
 -- For Web Portal and Mobile App
 -- =============================================
 
-USE [CoherentMobileDB]
+USE [CoherentMobApp]
 GO
 
 -- =============================================
