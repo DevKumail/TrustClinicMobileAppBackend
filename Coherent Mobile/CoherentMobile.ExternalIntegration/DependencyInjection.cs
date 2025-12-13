@@ -18,6 +18,7 @@ public static class DependencyInjection
     {
         // Register configuration
         services.Configure<AppointmentsApiSettings>(configuration.GetSection("AppointmentsApi"));
+        services.Configure<PatientHealthApiSettings>(configuration.GetSection("PatientHealthApi"));
 
         // Register HTTP clients with typed clients pattern
         services.AddHttpClient<IHealthDataApiClient, HealthDataApiClient>()
@@ -32,6 +33,14 @@ public static class DependencyInjection
         services.AddHttpClient<IAppointmentApiClient, AppointmentApiClient>((serviceProvider, httpClient) =>
         {
             var settings = serviceProvider.GetRequiredService<IOptions<AppointmentsApiSettings>>().Value;
+            httpClient.BaseAddress = new Uri(settings.BaseUrl);
+        })
+        .SetHandlerLifetime(TimeSpan.FromMinutes(5))
+        .AddPolicyHandler(GetRetryPolicy());
+
+        services.AddHttpClient<IPatientHealthApiClient, PatientHealthApiClient>((serviceProvider, httpClient) =>
+        {
+            var settings = serviceProvider.GetRequiredService<IOptions<PatientHealthApiSettings>>().Value;
             httpClient.BaseAddress = new Uri(settings.BaseUrl);
         })
         .SetHandlerLifetime(TimeSpan.FromMinutes(5))

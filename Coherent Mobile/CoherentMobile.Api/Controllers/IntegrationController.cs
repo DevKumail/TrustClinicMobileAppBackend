@@ -17,17 +17,20 @@ public class IntegrationController : ControllerBase
     private readonly IHealthDataApiClient _healthDataApiClient;
     private readonly INotificationApiClient _notificationApiClient;
     private readonly IAppointmentApiClient _appointmentApiClient;
+    private readonly IPatientHealthApiClient _patientHealthApiClient;
     private readonly ILogger<IntegrationController> _logger;
 
     public IntegrationController(
         IHealthDataApiClient healthDataApiClient,
         INotificationApiClient notificationApiClient,
         IAppointmentApiClient appointmentApiClient,
+        IPatientHealthApiClient patientHealthApiClient,
         ILogger<IntegrationController> logger)
     {
         _healthDataApiClient = healthDataApiClient;
         _notificationApiClient = notificationApiClient;
         _appointmentApiClient = appointmentApiClient;
+        _patientHealthApiClient = patientHealthApiClient;
         _logger = logger;
     }
 
@@ -101,6 +104,57 @@ public class IntegrationController : ControllerBase
         {
             _logger.LogError(ex, "Error fetching appointments for MRNO: {Mrno}", mrno);
             return StatusCode(500, new { error = "Failed to fetch appointments. Please try again later." });
+        }
+    }
+
+    [HttpGet("medications/{mrno}")]
+    public async Task<ActionResult<IEnumerable<Medication>>> GetMedicationsByMrno(string mrno)
+    {
+        _logger.LogInformation("Fetching medications for MRNO: {Mrno}", mrno);
+
+        try
+        {
+            var medications = await _patientHealthApiClient.GetMedicationsByMrnoV2Async(mrno);
+            return Ok(medications);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching medications for MRNO: {Mrno}", mrno);
+            return StatusCode(500, new { error = "Failed to fetch medications. Please try again later." });
+        }
+    }
+
+    [HttpGet("allergies/{mrno}")]
+    public async Task<ActionResult<IEnumerable<Allergy>>> GetAllergiesByMrno(string mrno)
+    {
+        _logger.LogInformation("Fetching allergies for MRNO: {Mrno}", mrno);
+
+        try
+        {
+            var allergies = await _patientHealthApiClient.GetAllergiesByMrnoAsync(mrno);
+            return Ok(allergies);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching allergies for MRNO: {Mrno}", mrno);
+            return StatusCode(500, new { error = "Failed to fetch allergies. Please try again later." });
+        }
+    }
+
+    [HttpGet("diagnoses/{mrno}")]
+    public async Task<ActionResult<IEnumerable<Diagnosis>>> GetDiagnosesByMrno(string mrno)
+    {
+        _logger.LogInformation("Fetching diagnoses for MRNO: {Mrno}", mrno);
+
+        try
+        {
+            var diagnoses = await _patientHealthApiClient.GetDiagnosesByMrnoAsync(mrno);
+            return Ok(diagnoses);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching diagnoses for MRNO: {Mrno}", mrno);
+            return StatusCode(500, new { error = "Failed to fetch diagnoses. Please try again later." });
         }
     }
 
