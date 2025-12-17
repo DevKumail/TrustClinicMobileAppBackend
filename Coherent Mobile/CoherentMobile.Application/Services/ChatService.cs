@@ -232,6 +232,36 @@ namespace CoherentMobile.Application.Services
             }
         }
 
+        public async Task MarkMessageAsDeliveredAsync(int messageId, int userId, string userType)
+        {
+            try
+            {
+                var message = await _chatRepo.GetMessageByIdAsync(messageId);
+                if (message == null)
+                {
+                    return;
+                }
+
+                var isParticipant = await _chatRepo.IsParticipantAsync(message.ConversationId, userId, userType);
+                if (!isParticipant)
+                {
+                    throw new UnauthorizedAccessException("You are not a participant in this conversation");
+                }
+
+                if (message.SenderId == userId && string.Equals(message.SenderType, userType, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                await _chatRepo.MarkMessageAsDeliveredAsync(messageId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error marking message {MessageId} as delivered", messageId);
+                throw;
+            }
+        }
+
         public async Task MarkMessagesAsReadAsync(int conversationId, int userId, string userType, List<int> messageIds)
         {
             try

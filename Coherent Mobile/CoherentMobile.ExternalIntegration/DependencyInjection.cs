@@ -19,6 +19,7 @@ public static class DependencyInjection
         // Register configuration
         services.Configure<AppointmentsApiSettings>(configuration.GetSection("AppointmentsApi"));
         services.Configure<PatientHealthApiSettings>(configuration.GetSection("PatientHealthApi"));
+        services.Configure<CrmChatApiSettings>(configuration.GetSection("CrmChatApi"));
 
         // Register HTTP clients with typed clients pattern
         services.AddHttpClient<IHealthDataApiClient, HealthDataApiClient>()
@@ -42,6 +43,13 @@ public static class DependencyInjection
         {
             var settings = serviceProvider.GetRequiredService<IOptions<PatientHealthApiSettings>>().Value;
             httpClient.BaseAddress = new Uri(settings.BaseUrl);
+        })
+        .SetHandlerLifetime(TimeSpan.FromMinutes(5))
+        .AddPolicyHandler(GetRetryPolicy());
+
+        services.AddHttpClient<ICrmChatApiClient, CrmChatApiClient>((serviceProvider, httpClient) =>
+        {
+            _ = serviceProvider.GetRequiredService<IOptions<CrmChatApiSettings>>().Value;
         })
         .SetHandlerLifetime(TimeSpan.FromMinutes(5))
         .AddPolicyHandler(GetRetryPolicy());

@@ -58,6 +58,20 @@ namespace CoherentMobile.Api.Hubs
 
         public async Task JoinConversation(int conversationId)
         {
+            var userId = GetUserId();
+            var userType = GetUserType();
+
+            if (!userId.HasValue || string.IsNullOrEmpty(userType))
+            {
+                return;
+            }
+
+            var conversation = await _chatService.GetConversationByIdAsync(conversationId, userId.Value, userType);
+            if (conversation == null)
+            {
+                throw new HubException("You are not allowed to join this conversation");
+            }
+
             await Groups.AddToGroupAsync(Context.ConnectionId, $"conversation_{conversationId}");
             _logger.LogInformation("Connection {ConnectionId} joined conversation {ConversationId}", Context.ConnectionId, conversationId);
         }
@@ -100,11 +114,51 @@ namespace CoherentMobile.Api.Hubs
         {
             var userId = GetUserId();
             var userName = GetUserName();
+            var userType = GetUserType();
 
-            if (userId.HasValue && !string.IsNullOrEmpty(userName))
+            if (userId.HasValue && !string.IsNullOrEmpty(userName) && !string.IsNullOrEmpty(userType))
             {
+                var conversation = await _chatService.GetConversationByIdAsync(conversationId, userId.Value, userType);
+                if (conversation == null)
+                {
+                    return;
+                }
+
                 await Clients.OthersInGroup($"conversation_{conversationId}")
                     .UserTyping(conversationId, userId.Value, userName, isTyping);
+            }
+        }
+
+        public async Task MarkAsDelivered(int conversationId, List<int> messageIds)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var userType = GetUserType();
+
+                if (!userId.HasValue || string.IsNullOrEmpty(userType))
+                {
+                    return;
+                }
+
+                var conversation = await _chatService.GetConversationByIdAsync(conversationId, userId.Value, userType);
+                if (conversation == null)
+                {
+                    return;
+                }
+
+                var deliveredAt = DateTime.UtcNow;
+                foreach (var messageId in messageIds)
+                {
+                    await _chatService.MarkMessageAsDeliveredAsync(messageId, userId.Value, userType);
+                    await Clients.OthersInGroup($"conversation_{conversationId}")
+                        .MessageDelivered(messageId, deliveredAt);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error marking messages as delivered");
+                throw new HubException("Failed to mark messages as delivered");
             }
         }
 
@@ -116,6 +170,12 @@ namespace CoherentMobile.Api.Hubs
                 var userType = GetUserType();
 
                 if (!userId.HasValue || string.IsNullOrEmpty(userType))
+                {
+                    return;
+                }
+
+                var conversation = await _chatService.GetConversationByIdAsync(conversationId, userId.Value, userType);
+                if (conversation == null)
                 {
                     return;
                 }

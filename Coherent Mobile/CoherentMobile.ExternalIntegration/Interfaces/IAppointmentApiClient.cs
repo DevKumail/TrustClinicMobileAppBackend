@@ -9,5 +9,8 @@ namespace CoherentMobile.ExternalIntegration.Interfaces
     {
         Task<IEnumerable<Appointment>> GetAppointmentsByMrnoAsync(string mrno);
         Task<DoctorSlotsApiResponse> GetAvailableDoctorSlotsAsync( string prsnlAlias, DateTime fromDate, DateTime toDate);
+        Task<BookAppointmentResponse> BookAppointmentAsync(BookAppointmentRequest request);
+        Task<CancelAppointmentResponse> CancelAppointmentAsync(CancelAppointmentRequest request);
+        Task<ChangeBookedAppointmentResponse> ChangeBookedAppointmentAsync(ChangeBookedAppointmentRequest request);
     }
 }

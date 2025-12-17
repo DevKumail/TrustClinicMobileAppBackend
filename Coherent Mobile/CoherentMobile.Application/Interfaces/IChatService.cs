@@ -12,6 +12,7 @@ namespace CoherentMobile.Application.Interfaces
         // Messages
         Task<(List<ChatMessageDto> messages, int totalCount)> GetConversationMessagesAsync(int conversationId, int userId, string userType, int pageNumber = 1, int pageSize = 50);
         Task<ChatMessageDto> SendMessageAsync(int senderId, string senderType, SendMessageRequestDto request);
+        Task MarkMessageAsDeliveredAsync(int messageId, int userId, string userType);
         Task MarkMessagesAsReadAsync(int conversationId, int userId, string userType, List<int> messageIds);
         Task DeleteMessageAsync(int messageId, int userId, string userType);
         

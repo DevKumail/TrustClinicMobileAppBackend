@@ -9,5 +9,6 @@ namespace CoherentMobile.ExternalIntegration.Interfaces
         Task<IEnumerable<Medication>> GetMedicationsByMrnoV2Async(string mrno);
         Task<IEnumerable<Allergy>> GetAllergiesByMrnoAsync(string mrno);
         Task<IEnumerable<Diagnosis>> GetDiagnosesByMrnoAsync(string mrno);
+        Task<IEnumerable<VitalSign>> GetVitalSignsByMrnoAsync(string mrno, int limit = 50);
     }
 }

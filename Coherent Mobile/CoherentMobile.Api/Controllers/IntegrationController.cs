@@ -107,6 +107,57 @@ public class IntegrationController : ControllerBase
         }
     }
 
+    [HttpPost("/api/v2/Appointments/BookAppointment")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(BookAppointmentResponse), 201)]
+    public async Task<IActionResult> BookAppointment([FromBody] BookAppointmentRequest request)
+    {
+        try
+        {
+            var result = await _appointmentApiClient.BookAppointmentAsync(request);
+            return StatusCode(201, result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error booking appointment for MRNO: {MrNo}", request.MrNo);
+            return StatusCode(500, new { error = "Failed to book appointment. Please try again later." });
+        }
+    }
+
+    [HttpPost("/api/v2/Appointments/CancelAppointment")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(CancelAppointmentResponse), 200)]
+    public async Task<IActionResult> CancelAppointment([FromBody] CancelAppointmentRequest request)
+    {
+        try
+        {
+            var result = await _appointmentApiClient.CancelAppointmentAsync(request);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cancelling appointment for AppBookingId: {AppBookingId}", request.AppBookingId);
+            return StatusCode(500, new { error = "Failed to cancel appointment. Please try again later." });
+        }
+    }
+
+    [HttpPut("/api/v2/Appointments/ChangeBookedAppointment")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(ChangeBookedAppointmentResponse), 200)]
+    public async Task<IActionResult> ChangeBookedAppointment([FromBody] ChangeBookedAppointmentRequest request)
+    {
+        try
+        {
+            var result = await _appointmentApiClient.ChangeBookedAppointmentAsync(request);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error rescheduling appointment AppId: {AppId}", request.AppId);
+            return StatusCode(500, new { error = "Failed to reschedule appointment. Please try again later." });
+        }
+    }
+
     [HttpGet("medications/{mrno}")]
     public async Task<ActionResult<IEnumerable<Medication>>> GetMedicationsByMrno(string mrno)
     {
@@ -155,6 +206,25 @@ public class IntegrationController : ControllerBase
         {
             _logger.LogError(ex, "Error fetching diagnoses for MRNO: {Mrno}", mrno);
             return StatusCode(500, new { error = "Failed to fetch diagnoses. Please try again later." });
+        }
+    }
+
+    [HttpGet("/api/v2/PatientHealth/GetVitalSignsByMRNO")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(IEnumerable<VitalSign>), 200)]
+    public async Task<IActionResult> GetVitalSignsByMrnoV2([FromQuery] string MRNO, [FromQuery] int limit = 50)
+    {
+        _logger.LogInformation("Fetching vital signs for MRNO: {Mrno}, Limit: {Limit}", MRNO, limit);
+
+        try
+        {
+            var vitals = await _patientHealthApiClient.GetVitalSignsByMrnoAsync(MRNO, limit);
+            return Ok(vitals);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching vital signs for MRNO: {Mrno}", MRNO);
+            return StatusCode(500, new { error = "Failed to fetch vital signs. Please try again later." });
         }
     }
 

@@ -1,6 +1,7 @@
 using System.Text;
 using CoherentMobile.API.Hubs;
 using CoherentMobile.API.Middleware;
+using CoherentMobile.Api.Hubs;
 using CoherentMobile.Application;
 using CoherentMobile.ExternalIntegration;
 using CoherentMobile.Infrastructure;
@@ -184,6 +185,7 @@ app.MapControllers();
 
 // Map SignalR Hubs
 app.MapHub<HealthDataHub>("/hubs/healthdata");
+app.MapHub<ChatHub>("/hubs/chat");
 
 // Health Check Endpoint
 app.MapHealthChecks("/health");

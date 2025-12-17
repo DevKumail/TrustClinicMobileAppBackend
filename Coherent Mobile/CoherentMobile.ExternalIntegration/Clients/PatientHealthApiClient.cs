@@ -101,5 +101,31 @@ namespace CoherentMobile.ExternalIntegration.Clients
                 throw new ApplicationException($"Failed to fetch diagnoses: {ex.Message}", ex);
             }
         }
+
+        public async Task<IEnumerable<VitalSign>> GetVitalSignsByMrnoAsync(string mrno, int limit = 50)
+        {
+            try
+            {
+                _logger.LogInformation("Fetching vital signs for MRNO: {Mrno}, Limit: {Limit}", mrno, limit);
+
+                var response = await _httpClient.GetAsync(
+                    $"{_baseUrl}/PatientHealth/GetVitalSignsByMRNO?MRNO={Uri.EscapeDataString(mrno)}&limit={limit}");
+                response.EnsureSuccessStatusCode();
+
+                var content = await response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+
+                var vitals = JsonSerializer.Deserialize<List<VitalSign>>(content, options);
+                return vitals ?? new List<VitalSign>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching vital signs for MRNO: {Mrno}", mrno);
+                throw new ApplicationException($"Failed to fetch vital signs: {ex.Message}", ex);
+            }
+        }
     }
 }

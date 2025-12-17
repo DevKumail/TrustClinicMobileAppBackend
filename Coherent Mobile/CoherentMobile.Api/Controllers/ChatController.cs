@@ -1,5 +1,7 @@
 using CoherentMobile.Application.DTOs.Chat;
 using CoherentMobile.Application.Interfaces;
+using CoherentMobile.ExternalIntegration.Interfaces;
+using CoherentMobile.ExternalIntegration.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -12,12 +14,65 @@ namespace CoherentMobile.Api.Controllers
     public class ChatController : ControllerBase
     {
         private readonly IChatService _chatService;
+        private readonly ICrmChatApiClient _crmChatApiClient;
         private readonly ILogger<ChatController> _logger;
 
-        public ChatController(IChatService chatService, ILogger<ChatController> logger)
+        public ChatController(IChatService chatService, ICrmChatApiClient crmChatApiClient, ILogger<ChatController> logger)
         {
             _chatService = chatService;
+            _crmChatApiClient = crmChatApiClient;
             _logger = logger;
+        }
+
+        [HttpPost("/api/v2/chat/threads/get-or-create")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(CrmGetOrCreateThreadResponse), 200)]
+        public async Task<IActionResult> CrmGetOrCreateThread([FromBody] CrmGetOrCreateThreadRequest request)
+        {
+            try
+            {
+                var result = await _crmChatApiClient.GetOrCreateThreadAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling CRM chat get-or-create thread");
+                return StatusCode(500, new { message = "An error occurred while calling CRM chat" });
+            }
+        }
+
+        [HttpPost("/api/v2/chat/messages")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(CrmSendMessageResponse), 200)]
+        public async Task<IActionResult> CrmSendMessage([FromBody] CrmSendMessageRequest request)
+        {
+            try
+            {
+                var result = await _crmChatApiClient.SendMessageAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling CRM chat send message");
+                return StatusCode(500, new { message = "An error occurred while calling CRM chat" });
+            }
+        }
+
+        [HttpGet("/api/v2/chat/messages/updates")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(IEnumerable<CrmMessageUpdateEvent>), 200)]
+        public async Task<IActionResult> CrmGetMessageUpdates([FromQuery] DateTime since, [FromQuery] int limit = 100)
+        {
+            try
+            {
+                var result = await _crmChatApiClient.GetMessageUpdatesAsync(since, limit);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling CRM chat message updates");
+                return StatusCode(500, new { message = "An error occurred while calling CRM chat" });
+            }
         }
 
         /// <summary>
