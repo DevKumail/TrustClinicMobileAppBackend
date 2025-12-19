@@ -22,6 +22,8 @@ public static class DependencyInjection
         services.AddScoped<IHealthRecordService, HealthRecordService>();
         services.AddScoped<IClinicInfoService, ClinicInfoService>();
         services.AddScoped<IChatService, ChatService>();
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IDeviceTokenService, DeviceTokenService>();
 
         // Register helpers
         services.AddScoped<JwtTokenGenerator>();

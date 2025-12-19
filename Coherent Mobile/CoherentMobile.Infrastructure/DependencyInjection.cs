@@ -32,6 +32,15 @@ public static class DependencyInjection
         
         // Register chat repositories
         services.AddScoped<IChatRepository, ChatRepository>();
+
+        // Register notifications repository
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+
+        // Register device token repository
+        services.AddScoped<IDeviceTokenRepository, DeviceTokenRepository>();
+
+        // Register push sender
+        services.AddScoped<IPushNotificationSender, FcmPushNotificationSender>();
         
         // Register legacy repositories (if still needed)
         services.AddScoped<IUserRepository, UserRepository>();
