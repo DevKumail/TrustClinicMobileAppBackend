@@ -1,0 +1,26 @@
+name: Deploy to Windows Server
+
+on:
+  push:
+    branches:
+      - deploy   # Yahan deploy branch ka naam
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    labels: 
+      - Windows
+      - X64
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Clean Deploy Folder
+        run: |
+          Remove-Item -Recurse -Force "D:\Trust Clinic Health App\Mobile Backend\*" -ErrorAction SilentlyContinue
+        shell: pwsh
+
+      - name: Copy Code to Deploy Folder
+        run: |
+          Copy-Item -Path "$PWD\*" -Destination "D:\Trust Clinic Health App\Mobile Backend" -Recurse -Force
+        shell: pwsh
