@@ -7,10 +7,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: self-hosted
-    labels: 
-      - Windows
-      - X64
+    runs-on: [self-hosted, Windows, X64]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -20,7 +17,9 @@ jobs:
           Remove-Item -Recurse -Force "D:\Trust Clinic Health App\Mobile Backend\*" -ErrorAction SilentlyContinue
         shell: pwsh
 
-      - name: Copy Code to Deploy Folder
+      - name: Publish API
         run: |
-          Copy-Item -Path "$PWD\*" -Destination "D:\Trust Clinic Health App\Mobile Backend" -Recurse -Force
+          dotnet --info
+          dotnet restore "Coherent Mobile\CoherentMobile.Api\Coherent.sln"
+          dotnet publish "Coherent Mobile\CoherentMobile.Api\CoherentMobile.Api.csproj" -c Release -o "D:\Trust Clinic Health App\Mobile Backend" --no-restore
         shell: pwsh
