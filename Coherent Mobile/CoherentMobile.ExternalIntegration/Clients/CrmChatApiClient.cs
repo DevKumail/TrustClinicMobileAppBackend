@@ -146,5 +146,59 @@ namespace CoherentMobile.ExternalIntegration.Clients
                 throw new ApplicationException($"Failed to get message updates: {ex.Message}", ex);
             }
         }
+
+        public async Task<CrmConversationListResponse> GetConversationsAsync(string patientMrNo, int limit = 50)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "CRM Chat: GetConversations PatientMrNo={PatientMrNo}, Limit={Limit}",
+                    patientMrNo,
+                    limit);
+
+                if (string.IsNullOrWhiteSpace(patientMrNo))
+                {
+                    throw new ArgumentException("patientMrNo is required", nameof(patientMrNo));
+                }
+
+                var query = new List<string>();
+                query.Add($"patientMrNo={Uri.EscapeDataString(patientMrNo)}");
+
+                query.Add($"limit={limit}");
+
+                var url = $"{_v2BaseUrl}/chat/conversations?{string.Join("&", query)}";
+
+                var response = await _httpClient.GetAsync(url);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError(
+                        "CRM Chat GetConversations upstream failed. Status: {StatusCode}. Body: {Body}",
+                        (int)response.StatusCode,
+                        responseContent);
+                    throw new ApplicationException(
+                        $"Upstream CRM Chat GetConversations failed. StatusCode={(int)response.StatusCode}. Body={responseContent}");
+                }
+
+                var result = JsonSerializer.Deserialize<CrmConversationListResponse>(responseContent, JsonOptions);
+                var safeResult = result ?? new CrmConversationListResponse();
+
+                foreach (var c in safeResult.Conversations)
+                {
+                    if (string.IsNullOrWhiteSpace(c.ConversationId))
+                    {
+                        c.ConversationId = c.CrmThreadId;
+                    }
+                }
+
+                return safeResult;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CRM Chat: Error in GetConversations");
+                throw new ApplicationException($"Failed to get conversations: {ex.Message}", ex);
+            }
+        }
     }
 }

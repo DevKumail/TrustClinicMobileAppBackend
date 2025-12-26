@@ -75,25 +75,25 @@ namespace CoherentMobile.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get user's conversations
-        /// </summary>
-        [HttpGet("conversations")]
-        [ProducesResponseType(typeof(GetConversationsResponseDto), 200)]
-        public async Task<IActionResult> GetConversations([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
+        [HttpGet("/api/v2/chat/conversations")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(CrmConversationListResponse), 200)]
+        public async Task<IActionResult> CrmGetConversations([FromQuery] string patientMrNo, [FromQuery] int limit = 50)
         {
             try
             {
-                var (userId, userType) = GetCurrentUser();
-                if (userId == 0) return Unauthorized();
+                if (string.IsNullOrWhiteSpace(patientMrNo))
+                {
+                    return BadRequest(new { message = "patientMrNo is required" });
+                }
 
-                var result = await _chatService.GetUserConversationsAsync(userId, userType, pageNumber, pageSize);
+                var result = await _crmChatApiClient.GetConversationsAsync(patientMrNo, limit);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting conversations");
-                return StatusCode(500, new { message = "An error occurred while retrieving conversations" });
+                _logger.LogError(ex, "Error calling CRM chat conversations");
+                return StatusCode(500, new { message = "An error occurred while calling CRM chat" });
             }
         }
 
@@ -138,7 +138,7 @@ namespace CoherentMobile.Api.Controllers
                 if (userId == 0) return Unauthorized();
 
                 var (messages, totalCount) = await _chatService.GetConversationMessagesAsync(conversationId, userId, userType, pageNumber, pageSize);
-                
+
                 return Ok(new
                 {
                     messages,
@@ -277,7 +277,7 @@ namespace CoherentMobile.Api.Controllers
                 // For now, save locally
                 var fileName = $"{Guid.NewGuid()}{extension}";
                 var uploadPath = Path.Combine("uploads", "chat");
-                
+
                 if (!Directory.Exists(uploadPath))
                 {
                     Directory.CreateDirectory(uploadPath);

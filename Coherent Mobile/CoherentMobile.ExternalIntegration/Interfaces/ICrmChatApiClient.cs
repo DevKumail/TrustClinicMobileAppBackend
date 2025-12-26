@@ -10,5 +10,6 @@ namespace CoherentMobile.ExternalIntegration.Interfaces
         Task<CrmGetOrCreateThreadResponse> GetOrCreateThreadAsync(CrmGetOrCreateThreadRequest request);
         Task<CrmSendMessageResponse> SendMessageAsync(CrmSendMessageRequest request);
         Task<IEnumerable<CrmMessageUpdateEvent>> GetMessageUpdatesAsync(DateTime since, int limit = 100);
+        Task<CrmConversationListResponse> GetConversationsAsync(string patientMrNo, int limit = 50);
     }
 }
