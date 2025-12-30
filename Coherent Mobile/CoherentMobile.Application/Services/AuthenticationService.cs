@@ -322,24 +322,14 @@ public class AuthenticationService : IAuthenticationService
     {
         try
         {
-            _logger.LogInformation("Login attempt for identifier: {Identifier}", MaskContact(request.Identifier));
+            _logger.LogInformation("Login attempt for email: {Email}", MaskContact(request.Email));
 
-            // Get patient by Emirates ID or Passport
-            Patient? patient = null;
-
-            // Try Emirates ID first
-            if (request.Identifier.Contains("-"))
-            {
-                patient = await _patientRepo.GetByEmiratesIdAsync(request.Identifier);
-            }
-            else
-            {
-                patient = await _patientRepo.GetByPassportNumberAsync(request.Identifier);
-            }
+            // Get patient by Email
+            var patient = await _patientRepo.GetByEmailAsync(request.Email);
 
             if (patient == null)
             {
-                await LogAuditAsync(null, null, "Login", "Failed", $"User not found: {MaskContact(request.Identifier)}");
+                await LogAuditAsync(null, null, "Login", "Failed", $"User not found: {MaskContact(request.Email)}");
                 return new LoginResponseDto
                 {
                     Success = false,

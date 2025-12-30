@@ -138,11 +138,21 @@ public class ClinicInfoService : IClinicInfoService
             // Fetch services for this facility
             var services = await _serviceRepo.GetByFacilityIdAsync(facilityId);
             var serviceDtos = new List<ServiceDto>();
+            
+            _logger.LogInformation("Found {ServiceCount} services for facility {FacilityId}", 
+                services.Count(), facilityId);
 
             foreach (var service in services)
             {
+                _logger.LogInformation("Processing service SId={SId}, Title={Title}", 
+                    service.SId, service.ServiceTitle);
+                    
                 // Fetch sub-services (Q&A) for this service
                 var subServices = await _serviceRepo.GetSubServicesByServiceIdAsync(service.SId);
+                
+                _logger.LogInformation("Found {SubServiceCount} sub-services for service SId={SId}", 
+                    subServices.Count(), service.SId);
+                    
                 var qnaDtos = subServices.Select(ss => new ServiceQnaDto
                 {
                     Id = ss.SSId,
