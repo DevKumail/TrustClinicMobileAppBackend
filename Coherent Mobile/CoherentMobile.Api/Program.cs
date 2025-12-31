@@ -14,6 +14,10 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ===== Render.com PORT Binding =====
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 // ===== Serilog Configuration =====
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
@@ -173,7 +177,7 @@ app.UseSwaggerUI(c =>
    // c.RoutePrefix = string.Empty;
 });
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection(); // Disabled for Render.com (handles SSL at proxy level)
 
 // Enable static files for images
 app.UseStaticFiles();
