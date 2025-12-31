@@ -10,7 +10,9 @@
   <ItemGroup>
     <!-- NuGet Packages -->
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
-    <!-- SignalR is included in ASP.NET Core 8, no separate package needed -->
+    <!-- Explicit version to fix transitive dependency conflicts -->
+    <PackageReference Include="Microsoft.Extensions.Diagnostics" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.Abstractions" Version="8.0.0" />
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
