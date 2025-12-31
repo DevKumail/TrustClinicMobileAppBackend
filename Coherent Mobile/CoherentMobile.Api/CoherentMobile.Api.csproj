@@ -24,4 +24,14 @@
     <ProjectReference Include="..\CoherentMobile.ExternalIntegration\CoherentMobile.ExternalIntegration.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Update="wwwroot\trust-clinic-health-mobile-firebase-adminsdk-fbsvc-f6c531ba83.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\images\doctors\" />
+  </ItemGroup>
+
 </Project>

@@ -3,6 +3,7 @@ using CoherentMobile.Domain.Interfaces;
 using Dapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace CoherentMobile.Infrastructure.Repositories;
 
@@ -12,11 +13,13 @@ namespace CoherentMobile.Infrastructure.Repositories;
 public class ServiceRepository : IServiceRepository
 {
     private readonly string _connectionString;
+    private readonly ILogger<ServiceRepository> _logger;
 
-    public ServiceRepository(IConfiguration configuration)
+    public ServiceRepository(IConfiguration configuration, ILogger<ServiceRepository> logger)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection") 
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found");
+        _logger = logger;
     }
 
     public async Task<IEnumerable<Service>> GetByFacilityIdAsync(int facilityId)
@@ -44,6 +47,13 @@ public class ServiceRepository : IServiceRepository
             WHERE SId = @ServiceId AND Active = 1
             ORDER BY DisplayOrder";
 
-        return await connection.QueryAsync<SubService>(query, new { ServiceId = serviceId });
+        _logger.LogInformation("Executing GetSubServicesByServiceIdAsync with ServiceId={ServiceId}", serviceId);
+        
+        var results = await connection.QueryAsync<SubService>(query, new { ServiceId = serviceId });
+        
+        _logger.LogInformation("GetSubServicesByServiceIdAsync returned {Count} results for ServiceId={ServiceId}", 
+            results.Count(), serviceId);
+        
+        return results;
     }
 }

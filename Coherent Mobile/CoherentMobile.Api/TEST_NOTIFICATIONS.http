@@ -1,0 +1,64 @@
+###
+# Notifications + Device Tokens API Testing
+# Replace {token} with actual JWT token from login
+###
+
+@baseUrl = https://localhost:7162
+@token = YOUR_JWT_TOKEN_HERE
+
+###
+# 1) Register / Upsert device token (FCM)
+###
+POST {{baseUrl}}/api/deviceTokens
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "token": "YOUR_FCM_DEVICE_TOKEN",
+  "platform": "Android"
+}
+
+###
+# 2) Create a notification (will store to DB + trigger FCM safe push)
+###
+POST {{baseUrl}}/api/notifications
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "userType": "Patient",
+  "notificationType": "chat.doctor_message",
+  "title": "(internal) doctor message",
+  "body": "(internal) open app",
+  "dataJson": "{\"conversationId\":123}"
+}
+
+###
+# 3) Fetch notifications since time
+###
+GET {{baseUrl}}/api/notifications?since=2025-12-01T00:00:00Z&limit=100
+Authorization: Bearer {{token}}
+
+###
+# 4) Ack delivered/read
+###
+POST {{baseUrl}}/api/notifications/ack
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "notificationIds": [1,2,3],
+  "markRead": false
+}
+
+###
+# 5) Remove device token
+###
+POST {{baseUrl}}/api/deviceTokens/remove
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "token": "YOUR_FCM_DEVICE_TOKEN"
+}

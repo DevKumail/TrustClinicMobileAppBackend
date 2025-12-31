@@ -93,6 +93,30 @@ public class ClinicInfoService : IClinicInfoService
 
                 doctorDtos.Add(new DoctorDto
                 {
+                    DId = doctor.DId,
+                    DoctorName = doctor.DoctorName,
+                    ArDoctorName = doctor.ArDoctorName,
+                    Title = doctor.Title,
+                    ArTitle = doctor.ArTitle,
+                    SPId = doctor.SPId,
+                    YearsOfExperience = doctor.YearsOfExperience,
+                    NationalityRaw = doctor.Nationality,
+                    ArNationality = doctor.ArNationality,
+                    LanguagesRaw = doctor.Languages,
+                    ArLanguages = doctor.ArLanguages,
+                    DoctorPhotoName = doctor.DoctorPhotoName,
+                    About = doctor.About,
+                    ArAbout = doctor.ArAbout,
+                    Education = doctor.Education,
+                    ArEducation = doctor.ArEducation,
+                    ExperienceRaw = doctor.Experience,
+                    ArExperience = doctor.ArExperience,
+                    ExpertiseRaw = doctor.Expertise,
+                    ArExpertise = doctor.ArExpertise,
+                    LicenceNo = doctor.LicenceNo,
+                    Active = doctor.Active,
+                    Gender = doctor.Gender,
+
                     Id = doctor.DId,
                     Name = doctor.DoctorName ?? string.Empty,
                     Position = doctor.Title ?? string.Empty,
@@ -114,11 +138,21 @@ public class ClinicInfoService : IClinicInfoService
             // Fetch services for this facility
             var services = await _serviceRepo.GetByFacilityIdAsync(facilityId);
             var serviceDtos = new List<ServiceDto>();
+            
+            _logger.LogInformation("Found {ServiceCount} services for facility {FacilityId}", 
+                services.Count(), facilityId);
 
             foreach (var service in services)
             {
+                _logger.LogInformation("Processing service SId={SId}, Title={Title}", 
+                    service.SId, service.ServiceTitle);
+                    
                 // Fetch sub-services (Q&A) for this service
                 var subServices = await _serviceRepo.GetSubServicesByServiceIdAsync(service.SId);
+                
+                _logger.LogInformation("Found {SubServiceCount} sub-services for service SId={SId}", 
+                    subServices.Count(), service.SId);
+                    
                 var qnaDtos = subServices.Select(ss => new ServiceQnaDto
                 {
                     Id = ss.SSId,
@@ -196,6 +230,30 @@ public class ClinicInfoService : IClinicInfoService
 
                 doctorDtos.Add(new DoctorDto
                 {
+                    DId = doctor.DId,
+                    DoctorName = doctor.DoctorName,
+                    ArDoctorName = doctor.ArDoctorName,
+                    Title = doctor.Title,
+                    ArTitle = doctor.ArTitle,
+                    SPId = doctor.SPId,
+                    YearsOfExperience = doctor.YearsOfExperience,
+                    NationalityRaw = doctor.Nationality,
+                    ArNationality = doctor.ArNationality,
+                    LanguagesRaw = doctor.Languages,
+                    ArLanguages = doctor.ArLanguages,
+                    DoctorPhotoName = doctor.DoctorPhotoName,
+                    About = doctor.About,
+                    ArAbout = doctor.ArAbout,
+                    Education = doctor.Education,
+                    ArEducation = doctor.ArEducation,
+                    ExperienceRaw = doctor.Experience,
+                    ArExperience = doctor.ArExperience,
+                    ExpertiseRaw = doctor.Expertise,
+                    ArExpertise = doctor.ArExpertise,
+                    LicenceNo = doctor.LicenceNo,
+                    Active = doctor.Active,
+                    Gender = doctor.Gender,
+
                     Id = doctor.DId,
                     Name = doctor.DoctorName ?? string.Empty,
                     Position = doctor.Title ?? string.Empty,

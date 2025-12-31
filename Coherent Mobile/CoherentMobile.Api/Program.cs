@@ -2,6 +2,7 @@ using System.Text;
 using CoherentMobile.API.Hubs;
 using CoherentMobile.API.Middleware;
 using CoherentMobile.Api.Hubs;
+using CoherentMobile.Api.Services;
 using CoherentMobile.Application;
 using CoherentMobile.ExternalIntegration;
 using CoherentMobile.Infrastructure;
@@ -34,6 +35,9 @@ builder.Services.AddFluentValidationAutoValidation()
 builder.Services.AddApplicationServices();      // Application layer
 builder.Services.AddInfrastructureServices();   // Infrastructure layer
 builder.Services.AddExternalIntegrationServices(builder.Configuration); // External integration layer
+
+// Background services
+builder.Services.AddHostedService<MedicationReminderScheduler>();
 
 // ===== JWT Authentication Configuration =====
 var jwtSettings = builder.Configuration.GetSection("Jwt");
@@ -166,6 +170,7 @@ app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Coherent API V1");
     c.RoutePrefix = "swagger"; // Swagger UI at /swagger
+   // c.RoutePrefix = string.Empty;
 });
 
 app.UseHttpsRedirection();
