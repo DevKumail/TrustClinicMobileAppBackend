@@ -1,6 +1,9 @@
 [phases.setup]
 nixPkgs = ["dotnet-sdk_8"]
 
+[phases.install]
+cmds = ["cd 'Coherent Mobile' && dotnet restore CoherentMobile.Api/CoherentMobile.Api.csproj"]
+
 [phases.build]
 cmds = ["cd 'Coherent Mobile' && dotnet publish CoherentMobile.Api/CoherentMobile.Api.csproj -c Release -o /app/out"]
 

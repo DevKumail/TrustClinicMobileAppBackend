@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "cd 'Coherent Mobile' && dotnet publish CoherentMobile.Api/CoherentMobile.Api.csproj -c Release -o /app/out"
+buildCommand = "cd 'Coherent Mobile' && dotnet restore CoherentMobile.Api/CoherentMobile.Api.csproj && dotnet publish CoherentMobile.Api/CoherentMobile.Api.csproj -c Release -o /app/out"
 
 [deploy]
 startCommand = "dotnet /app/out/CoherentMobile.Api.dll"
