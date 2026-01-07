@@ -127,5 +127,34 @@ namespace CoherentMobile.ExternalIntegration.Clients
                 throw new ApplicationException($"Failed to fetch vital signs: {ex.Message}", ex);
             }
         }
+
+        public async Task<MobileUserResponse> MarkPatientAsMobileUserAsync(string mrno)
+        {
+            try
+            {
+                _logger.LogInformation("Marking patient as mobile user for MRNO: {Mrno}", mrno);
+
+                var request = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/api/v2/Patients/{Uri.EscapeDataString(mrno)}/mobile-user");
+                var response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                var content = await response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+
+                var result = JsonSerializer.Deserialize<MobileUserResponse>(content, options);
+                
+                _logger.LogInformation("Patient marked as mobile user successfully for MRNO: {Mrno}", mrno);
+                
+                return result ?? new MobileUserResponse { MrNo = mrno, IsMobileUser = true, Message = "Success" };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error marking patient as mobile user for MRNO: {Mrno}", mrno);
+                throw new ApplicationException($"Failed to mark patient as mobile user: {ex.Message}", ex);
+            }
+        }
     }
 }

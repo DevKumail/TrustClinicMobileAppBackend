@@ -17,6 +17,9 @@ namespace CoherentMobile.Domain.Entities
         public bool IsDeleted { get; set; }
         public DateTime? DeletedAt { get; set; }
         public int? ReplyToMessageId { get; set; }
+        
+        // CRM sync fields
+        public string? CrmMessageId { get; set; }
 
         // Navigation properties
         public Conversation Conversation { get; set; } = null!;

@@ -216,5 +216,63 @@ namespace CoherentMobile.Infrastructure.Repositories
             var sql = @"SELECT LastSeen FROM MUserStatus WHERE UserId = @UserId AND UserType = @UserType";
             return await connection.ExecuteScalarAsync<DateTime?>(sql, new { UserId = userId, UserType = userType });
         }
+
+        public async Task<IEnumerable<int>> GetActiveThreadIdsAsync(TimeSpan withinPeriod)
+        {
+            using var connection = CreateConnection();
+            var cutoff = DateTime.UtcNow.Subtract(withinPeriod);
+            var sql = @"
+                SELECT DISTINCT c.ConversationId 
+                FROM MConversations c
+                WHERE c.IsActive = 1 
+                  AND (c.LastMessageAt IS NULL OR c.LastMessageAt >= @Cutoff)
+                ORDER BY c.ConversationId";
+            return await connection.QueryAsync<int>(sql, new { Cutoff = cutoff });
+        }
+
+        public async Task<bool> CrmMessageExistsAsync(string crmMessageId)
+        {
+            if (string.IsNullOrWhiteSpace(crmMessageId))
+                return false;
+                
+            using var connection = CreateConnection();
+            var sql = @"SELECT CAST(CASE WHEN EXISTS (
+                SELECT 1 FROM MChatMessages WHERE CrmMessageId = @CrmMessageId
+            ) THEN 1 ELSE 0 END AS BIT)";
+            return await connection.ExecuteScalarAsync<bool>(sql, new { CrmMessageId = crmMessageId });
+        }
+
+        public async Task<int> SaveCrmMessageAsync(ChatMessage message, string crmMessageId)
+        {
+            using var connection = CreateConnection();
+            
+            // Check if already exists (idempotency)
+            var existingId = await connection.QueryFirstOrDefaultAsync<int?>(
+                "SELECT MessageId FROM MChatMessages WHERE CrmMessageId = @CrmMessageId",
+                new { CrmMessageId = crmMessageId });
+            
+            if (existingId.HasValue)
+                return existingId.Value;
+            
+            var sql = @"
+                INSERT INTO MChatMessages (ConversationId, SenderId, SenderType, MessageType, Content, FileUrl, FileName, FileSize, SentAt, IsDelivered, IsRead, ReplyToMessageId, CrmMessageId)
+                VALUES (@ConversationId, @SenderId, @SenderType, @MessageType, @Content, @FileUrl, @FileName, @FileSize, @SentAt, 0, 0, @ReplyToMessageId, @CrmMessageId);
+                SELECT CAST(SCOPE_IDENTITY() as int)";
+            
+            return await connection.ExecuteScalarAsync<int>(sql, new
+            {
+                message.ConversationId,
+                message.SenderId,
+                message.SenderType,
+                message.MessageType,
+                message.Content,
+                message.FileUrl,
+                message.FileName,
+                message.FileSize,
+                message.SentAt,
+                message.ReplyToMessageId,
+                CrmMessageId = crmMessageId
+            });
+        }
     }
 }

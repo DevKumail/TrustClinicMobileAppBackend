@@ -4,6 +4,7 @@ using CoherentMobile.Application.Interfaces;
 using CoherentMobile.Application.Services.Helpers;
 using CoherentMobile.Domain.Entities;
 using CoherentMobile.Domain.Interfaces;
+using CoherentMobile.ExternalIntegration.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -23,6 +24,7 @@ public class AuthenticationService : IAuthenticationService
     private readonly JwtTokenGenerator _jwtGenerator;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthenticationService> _logger;
+    private readonly IPatientHealthApiClient _patientHealthApiClient;
 
     // Temporary storage for signup data (in production, use Redis or similar)
     private static readonly Dictionary<string, SignupCacheData> _signupDataCache = new();
@@ -43,7 +45,8 @@ public class AuthenticationService : IAuthenticationService
         IEmailService emailService,
         JwtTokenGenerator jwtGenerator,
         IConfiguration configuration,
-        ILogger<AuthenticationService> logger)
+        ILogger<AuthenticationService> logger,
+        IPatientHealthApiClient patientHealthApiClient)
     {
         _patientRepo = patientRepo;
         _otpRepo = otpRepo;
@@ -54,6 +57,7 @@ public class AuthenticationService : IAuthenticationService
         _jwtGenerator = jwtGenerator;
         _configuration = configuration;
         _logger = logger;
+        _patientHealthApiClient = patientHealthApiClient;
     }
 
     public async Task<VerifyInformationResponseDto> VerifyInformationAsync(
@@ -289,6 +293,19 @@ public class AuthenticationService : IAuthenticationService
 
             // Log audit
             await LogAuditAsync(patient.Id, request.MRNO, "SignupComplete", "Success", "Profile created successfully");
+
+            // Mark patient as mobile user in third-party system
+            try
+            {
+                var mobileUserResponse = await _patientHealthApiClient.MarkPatientAsMobileUserAsync(patient.MRNO);
+                _logger.LogInformation("Patient marked as mobile user: MRNO={MRNO}, IsMobileUser={IsMobileUser}", 
+                    patient.MRNO, mobileUserResponse.IsMobileUser);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't fail registration - this is a non-critical operation
+                _logger.LogWarning(ex, "Failed to mark patient as mobile user in third-party system for MRNO: {MRNO}", patient.MRNO);
+            }
 
             // Send welcome email
             if (!string.IsNullOrEmpty(patient.Email))

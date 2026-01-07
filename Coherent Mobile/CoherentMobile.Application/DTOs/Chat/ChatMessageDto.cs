@@ -21,5 +21,9 @@ namespace CoherentMobile.Application.DTOs.Chat
         public bool IsRead { get; set; }
         public int? ReplyToMessageId { get; set; }
         public ChatMessageDto? ReplyToMessage { get; set; }
+        
+        // CRM sync fields
+        public string? CrmMessageId { get; set; }
+        public string? CrmThreadId { get; set; }
     }
 }

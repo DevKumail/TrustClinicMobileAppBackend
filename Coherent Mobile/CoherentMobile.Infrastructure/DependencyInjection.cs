@@ -41,6 +41,9 @@ public static class DependencyInjection
         services.AddScoped<ISMSService, SMSService>();
         services.AddScoped<IEmailService, EmailService>();
 
+        // Background service for real-time CRM chat sync via SignalR
+        services.AddHostedService<CrmSignalRClientService>();
+
         return services;
     }
 }

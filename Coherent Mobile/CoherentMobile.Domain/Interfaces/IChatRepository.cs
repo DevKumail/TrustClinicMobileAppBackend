@@ -31,5 +31,12 @@ namespace CoherentMobile.Domain.Interfaces
         Task UpdateUserStatusAsync(int userId, string userType, bool isOnline, string? connectionId = null, string? deviceType = null);
         Task<bool> GetUserOnlineStatusAsync(int userId, string userType);
         Task<DateTime?> GetUserLastSeenAsync(int userId, string userType);
+        
+        // Active threads for SignalR subscription
+        Task<IEnumerable<int>> GetActiveThreadIdsAsync(TimeSpan withinPeriod);
+        
+        // CRM message deduplication
+        Task<bool> CrmMessageExistsAsync(string crmMessageId);
+        Task<int> SaveCrmMessageAsync(ChatMessage message, string crmMessageId);
     }
 }

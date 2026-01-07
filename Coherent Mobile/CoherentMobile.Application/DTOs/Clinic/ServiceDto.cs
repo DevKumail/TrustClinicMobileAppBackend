@@ -9,5 +9,5 @@ public class ServiceDto
     public string ServiceIcon { get; set; } = string.Empty;
     public string ServiceName { get; set; } = string.Empty;
     public string ServiceImage { get; set; } = string.Empty;
-    public List<ServiceQnaDto> Qna { get; set; } = new();
+    public List<ServiceDetailDto> ServiceDetails { get; set; } = new();
 }

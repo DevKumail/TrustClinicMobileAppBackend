@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CoherentMobile.Domain\CoherentMobile.Domain.csproj" />
+    <ProjectReference Include="..\CoherentMobile.ExternalIntegration\CoherentMobile.ExternalIntegration.csproj" />
   </ItemGroup>
 
 </Project>

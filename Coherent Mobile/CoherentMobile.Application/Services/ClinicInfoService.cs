@@ -153,11 +153,11 @@ public class ClinicInfoService : IClinicInfoService
                 _logger.LogInformation("Found {SubServiceCount} sub-services for service SId={SId}", 
                     subServices.Count(), service.SId);
                     
-                var qnaDtos = subServices.Select(ss => new ServiceQnaDto
+                var serviceDetailDtos = subServices.Select(ss => new ServiceDetailDto
                 {
                     Id = ss.SSId,
-                    Question = ss.SubServiceTitle ?? string.Empty,
-                    Answer = ss.Details ?? string.Empty
+                    Title = ss.SubServiceTitle ?? string.Empty,
+                    Details = ss.Details ?? string.Empty
                 }).ToList();
 
                 serviceDtos.Add(new ServiceDto
@@ -170,7 +170,7 @@ public class ClinicInfoService : IClinicInfoService
                     ServiceImage = !string.IsNullOrEmpty(service.DisplayImageName) 
                         ? $"{imageBaseUrl}/{serviceImagesPath}/{service.DisplayImageName}" 
                         : string.Empty,
-                    Qna = qnaDtos
+                    ServiceDetails = serviceDetailDtos
                 });
             }
 
