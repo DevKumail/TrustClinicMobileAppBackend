@@ -68,15 +68,31 @@ public class FcmPushNotificationSender : IPushNotificationSender
 
         var messageData = data == null ? new Dictionary<string, string>() : new Dictionary<string, string>(data);
         messageData.TryAdd("event", "notifications_changed");
+        
+        // Include title and body in data payload for Flutter background handler
+        messageData.TryAdd("title", string.IsNullOrWhiteSpace(title) ? "New update" : title);
+        messageData.TryAdd("body", string.IsNullOrWhiteSpace(body) ? "Open app to view" : body);
 
+        // DATA-ONLY message (no Notification property) ensures onBackgroundMessage is triggered
+        // when app is closed/terminated. Flutter will show the notification via flutter_local_notifications.
         var multicast = new MulticastMessage
         {
             Tokens = tokens.Select(t => t.Token).ToList(),
             Data = messageData,
-            Notification = new Notification
+            Android = new AndroidConfig
             {
-                Title = string.IsNullOrWhiteSpace(title) ? "New update" : title,
-                Body = string.IsNullOrWhiteSpace(body) ? "Open app to view" : body
+                Priority = Priority.High
+            },
+            Apns = new ApnsConfig
+            {
+                Aps = new Aps
+                {
+                    ContentAvailable = true
+                },
+                Headers = new Dictionary<string, string>
+                {
+                    ["apns-priority"] = "10"
+                }
             }
         };
 

@@ -64,16 +64,23 @@ public class NotificationService : INotificationService
 
         var (safeTitle, safeBody) = GetSafePushContent(request.NotificationType);
 
+        var pushData = new Dictionary<string, string>
+        {
+            ["notificationId"] = id.ToString(),
+            ["notificationType"] = request.NotificationType
+        };
+
+        if (!string.IsNullOrWhiteSpace(request.DataJson))
+        {
+            pushData["dataJson"] = request.DataJson;
+        }
+
         await _push.SendWakeupAsync(
             request.UserId,
             request.UserType,
             safeTitle,
             safeBody,
-            new Dictionary<string, string>
-            {
-                ["notificationId"] = id.ToString(),
-                ["notificationType"] = request.NotificationType
-            });
+            pushData);
 
         return id;
     }

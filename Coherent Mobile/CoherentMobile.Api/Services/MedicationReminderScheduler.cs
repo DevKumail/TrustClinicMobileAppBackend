@@ -19,8 +19,8 @@ public class MedicationReminderScheduler : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var intervalSeconds = _configuration.GetValue<int?>("MedicationReminders:PollIntervalSeconds") ?? 30;
-        if (intervalSeconds <= 0) intervalSeconds = 30;
+        var intervalSeconds = _configuration.GetValue<int?>("MedicationReminders:PollIntervalSeconds") ?? 10;
+        if (intervalSeconds <= 0) intervalSeconds = 10;
 
         var take = _configuration.GetValue<int?>("MedicationReminders:BatchSize") ?? 200;
         if (take <= 0) take = 200;
