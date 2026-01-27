@@ -14,9 +14,10 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ===== Render.com PORT Binding =====
-var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
-builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+// ===== Network Binding =====
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5053";
+var httpsPort = Environment.GetEnvironmentVariable("HTTPS_PORT") ?? "7162";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}", $"https://0.0.0.0:{httpsPort}");
 
 // ===== Serilog Configuration =====
 Log.Logger = new LoggerConfiguration()

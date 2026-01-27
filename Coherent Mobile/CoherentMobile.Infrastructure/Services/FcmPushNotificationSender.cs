@@ -73,20 +73,43 @@ public class FcmPushNotificationSender : IPushNotificationSender
         messageData.TryAdd("title", string.IsNullOrWhiteSpace(title) ? "New update" : title);
         messageData.TryAdd("body", string.IsNullOrWhiteSpace(body) ? "Open app to view" : body);
 
-        // DATA-ONLY message (no Notification property) ensures onBackgroundMessage is triggered
-        // when app is closed/terminated. Flutter will show the notification via flutter_local_notifications.
+        // Include Notification payload for kill mode - Android system will display it
+        // Data payload is also included for app to process when opened
+        var displayTitle = string.IsNullOrWhiteSpace(title) ? "Medication Reminder" : title;
+        var displayBody = string.IsNullOrWhiteSpace(body) ? "Time for your medication" : body;
+
         var multicast = new MulticastMessage
         {
             Tokens = tokens.Select(t => t.Token).ToList(),
             Data = messageData,
+            Notification = new Notification
+            {
+                Title = displayTitle,
+                Body = displayBody
+            },
             Android = new AndroidConfig
             {
-                Priority = Priority.High
+                Priority = Priority.High,
+                Notification = new AndroidNotification
+                {
+                    Title = displayTitle,
+                    Body = displayBody,
+                    ChannelId = "medication_reminder_channel",
+                    Priority = NotificationPriority.MAX,
+                    DefaultSound = true,
+                    DefaultVibrateTimings = true
+                }
             },
             Apns = new ApnsConfig
             {
                 Aps = new Aps
                 {
+                    Alert = new ApsAlert
+                    {
+                        Title = displayTitle,
+                        Body = displayBody
+                    },
+                    Sound = "default",
                     ContentAvailable = true
                 },
                 Headers = new Dictionary<string, string>
@@ -109,6 +132,13 @@ public class FcmPushNotificationSender : IPushNotificationSender
 
                     var token = multicast.Tokens[i];
                     _logger.LogWarning(r.Exception, "FCM send failed for token {Token}", token);
+
+                    // Deactivate invalid/expired tokens
+                    if (IsTokenInvalid(r.Exception))
+                    {
+                        _logger.LogInformation("Deactivating invalid FCM token {Token} for user {UserId}", token, userId);
+                        await _deviceTokens.DeactivateAsync(userId, userType, token);
+                    }
                 }
             }
         }
@@ -116,5 +146,17 @@ public class FcmPushNotificationSender : IPushNotificationSender
         {
             _logger.LogError(ex, "FCM send failed");
         }
+    }
+
+    private static bool IsTokenInvalid(Exception? ex)
+    {
+        if (ex is not FirebaseMessagingException fme)
+            return false;
+
+        // These error codes indicate the token is permanently invalid
+        return fme.MessagingErrorCode is 
+            MessagingErrorCode.Unregistered or      // App uninstalled or token expired
+            MessagingErrorCode.InvalidArgument or   // Invalid token format
+            MessagingErrorCode.SenderIdMismatch;    // Token from different Firebase project
     }
 }

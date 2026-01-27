@@ -21,6 +21,8 @@ public static class DependencyInjection
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IDeviceTokenService, DeviceTokenService>();
         services.AddScoped<IMedicationReminderService, MedicationReminderService>();
+        services.AddScoped<IPromotionService, PromotionService>();
+        services.AddScoped<IPatientEducationService, PatientEducationService>();
 
         services.AddScoped<JwtTokenGenerator>();
 

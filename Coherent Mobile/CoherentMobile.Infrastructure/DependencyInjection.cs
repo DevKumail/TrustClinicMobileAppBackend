@@ -20,10 +20,15 @@ public static class DependencyInjection
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IAuthAuditLogRepository, AuthAuditLogRepository>();
 
+        services.AddScoped<IPatientEducationCategoryRepository, PatientEducationCategoryRepository>();
+        services.AddScoped<IPatientEducationRepository, PatientEducationRepository>();
+        services.AddScoped<IPatientEducationAssignmentRepository, PatientEducationAssignmentRepository>();
+
         services.AddScoped<IFacilityRepository, FacilityRepository>();
         services.AddScoped<IDoctorRepository, DoctorRepository>();
         services.AddScoped<IServiceRepository, ServiceRepository>();
         services.AddScoped<ISpecialityRepository, SpecialityRepository>();
+        services.AddScoped<IPromotionRepository, PromotionRepository>();
 
         services.AddScoped<IChatRepository, ChatRepository>();
 
