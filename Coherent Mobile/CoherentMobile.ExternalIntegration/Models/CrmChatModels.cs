@@ -77,6 +77,15 @@ namespace CoherentMobile.ExternalIntegration.Models
         [JsonPropertyName("receiverDoctorLicenseNo")]
         public string? ReceiverDoctorLicenseNo { get; set; }
 
+        [JsonPropertyName("senderEmpId")]
+        public long? SenderEmpId { get; set; }
+
+        [JsonPropertyName("senderEmpType")]
+        public int? SenderEmpType { get; set; }
+
+        [JsonPropertyName("receiverStaffType")]
+        public string? ReceiverStaffType { get; set; }
+
         [JsonPropertyName("messageType")]
         public string MessageType { get; set; } = string.Empty;
 
@@ -210,4 +219,158 @@ namespace CoherentMobile.ExternalIntegration.Models
         [JsonPropertyName("conversations")]
         public List<CrmConversationListItem> Conversations { get; set; } = new();
     }
+
+    #region Broadcast Channel Models
+
+    public sealed class CrmGetOrCreateBroadcastChannelRequest
+    {
+        [JsonPropertyName("patientMrNo")]
+        public string PatientMrNo { get; set; } = string.Empty;
+
+        [JsonPropertyName("staffType")]
+        public string StaffType { get; set; } = string.Empty;
+    }
+
+    public sealed class CrmGetOrCreateBroadcastChannelResponse
+    {
+        [JsonPropertyName("conversationId")]
+        public int? ConversationId { get; set; }
+
+        [JsonPropertyName("crmThreadId")]
+        public string CrmThreadId { get; set; } = string.Empty;
+
+        [JsonPropertyName("channelType")]
+        public string ChannelType { get; set; } = string.Empty;
+
+        [JsonPropertyName("staffType")]
+        public string StaffType { get; set; } = string.Empty;
+
+        [JsonPropertyName("isNew")]
+        public bool IsNew { get; set; }
+    }
+
+    public sealed class CrmBroadcastChannelItem
+    {
+        [JsonPropertyName("conversationId")]
+        public int ConversationId { get; set; }
+
+        [JsonPropertyName("crmThreadId")]
+        public string CrmThreadId { get; set; } = string.Empty;
+
+        [JsonPropertyName("patientMrNo")]
+        public string PatientMrNo { get; set; } = string.Empty;
+
+        [JsonPropertyName("patientName")]
+        public string? PatientName { get; set; }
+
+        [JsonPropertyName("staffType")]
+        public string StaffType { get; set; } = string.Empty;
+
+        [JsonPropertyName("lastMessageContent")]
+        public string? LastMessageContent { get; set; }
+
+        [JsonPropertyName("lastMessageAt")]
+        public DateTime? LastMessageAt { get; set; }
+
+        [JsonPropertyName("unreadCount")]
+        public int UnreadCount { get; set; }
+    }
+
+    public sealed class CrmStaffUnreadSummary
+    {
+        [JsonPropertyName("staffType")]
+        public string StaffType { get; set; } = string.Empty;
+
+        [JsonPropertyName("totalUnreadCount")]
+        public int TotalUnreadCount { get; set; }
+
+        [JsonPropertyName("channelsWithUnread")]
+        public int ChannelsWithUnread { get; set; }
+    }
+
+    public sealed class CrmThreadMessage
+    {
+        [JsonPropertyName("crmMessageId")]
+        public string CrmMessageId { get; set; } = string.Empty;
+
+        [JsonPropertyName("senderType")]
+        public string SenderType { get; set; } = string.Empty;
+
+        [JsonPropertyName("senderMrNo")]
+        public string? SenderMrNo { get; set; }
+
+        [JsonPropertyName("senderDoctorLicenseNo")]
+        public string? SenderDoctorLicenseNo { get; set; }
+
+        [JsonPropertyName("senderEmpId")]
+        public long? SenderEmpId { get; set; }
+
+        [JsonPropertyName("senderEmpType")]
+        public int? SenderEmpType { get; set; }
+
+        [JsonPropertyName("messageType")]
+        public string MessageType { get; set; } = string.Empty;
+
+        [JsonPropertyName("content")]
+        public string? Content { get; set; }
+
+        [JsonPropertyName("fileUrl")]
+        public string? FileUrl { get; set; }
+
+        [JsonPropertyName("fileName")]
+        public string? FileName { get; set; }
+
+        [JsonPropertyName("fileSize")]
+        public long? FileSize { get; set; }
+
+        [JsonPropertyName("sentAt")]
+        public DateTime SentAt { get; set; }
+    }
+
+    public sealed class CrmMarkReadResponse
+    {
+        [JsonPropertyName("success")]
+        public bool Success { get; set; }
+
+        [JsonPropertyName("messagesMarked")]
+        public int MessagesMarked { get; set; }
+    }
+
+    public sealed class CrmStaffMessageWebhook
+    {
+        [JsonPropertyName("crmThreadId")]
+        public string CrmThreadId { get; set; } = string.Empty;
+
+        [JsonPropertyName("crmMessageId")]
+        public string CrmMessageId { get; set; } = string.Empty;
+
+        [JsonPropertyName("staffType")]
+        public string StaffType { get; set; } = string.Empty;
+
+        [JsonPropertyName("senderEmpId")]
+        public long SenderEmpId { get; set; }
+
+        [JsonPropertyName("patientMrNo")]
+        public string PatientMrNo { get; set; } = string.Empty;
+
+        [JsonPropertyName("messageType")]
+        public string MessageType { get; set; } = string.Empty;
+
+        [JsonPropertyName("content")]
+        public string? Content { get; set; }
+
+        [JsonPropertyName("fileUrl")]
+        public string? FileUrl { get; set; }
+
+        [JsonPropertyName("fileName")]
+        public string? FileName { get; set; }
+
+        [JsonPropertyName("fileSize")]
+        public long? FileSize { get; set; }
+
+        [JsonPropertyName("sentAt")]
+        public DateTime SentAt { get; set; }
+    }
+
+    #endregion
 }

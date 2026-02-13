@@ -1,4 +1,6 @@
 using CoherentMobile.Domain.Entities;
+using System;
+using System.Collections.Generic;
 
 namespace CoherentMobile.Domain.Interfaces
 {
@@ -38,5 +40,10 @@ namespace CoherentMobile.Domain.Interfaces
         // CRM message deduplication
         Task<bool> CrmMessageExistsAsync(string crmMessageId);
         Task<int> SaveCrmMessageAsync(ChatMessage message, string crmMessageId);
+
+        // Broadcast channels (Support)
+        Task<List<ChatBroadcastChannelListItem>> GetBroadcastChannelsForStaffAsync(string staffType, int limit = 50);
+        Task<(int totalUnreadCount, int channelsWithUnread)> GetBroadcastUnreadSummaryForStaffAsync(string staffType);
+        Task<int> MarkBroadcastChannelAsReadForStaffAsync(int conversationId);
     }
 }

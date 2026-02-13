@@ -3,7 +3,9 @@ using CoherentMobile.Domain.Interfaces;
 using Dapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using System;
 using System.Data;
+using System.Linq;
 
 namespace CoherentMobile.Infrastructure.Repositories
 {
@@ -273,6 +275,123 @@ namespace CoherentMobile.Infrastructure.Repositories
                 message.ReplyToMessageId,
                 CrmMessageId = crmMessageId
             });
+        }
+
+        public async Task<List<ChatBroadcastChannelListItem>> GetBroadcastChannelsForStaffAsync(string staffType, int limit = 50)
+        {
+            if (string.IsNullOrWhiteSpace(staffType))
+                throw new ArgumentException("staffType is required", nameof(staffType));
+
+            if (limit <= 0)
+                limit = 50;
+
+            limit = Math.Min(limit, 200);
+
+            var channelTitle = $"{staffType} Channel";
+
+            using var connection = CreateConnection();
+
+            var sql = @"
+                SELECT TOP (@Limit)
+                    c.ConversationId,
+                    c.Title AS ChannelTitle,
+                    c.LastMessageAt,
+                    c.LastMessage AS LastMessagePreview,
+                    u.MRNO AS PatientMrNo,
+                    COALESCE(NULLIF(u.FullName, ''), NULLIF(u.MRNO, ''), CAST(u.Id AS NVARCHAR(50))) AS PatientName,
+                    (
+                        SELECT COUNT(1)
+                        FROM dbo.MChatMessages m
+                        WHERE m.ConversationId = c.ConversationId
+                          AND m.SenderType = 'Patient'
+                          AND m.IsRead = 0
+                          AND m.IsDeleted = 0
+                    ) AS UnreadCount
+                FROM dbo.MConversations c
+                INNER JOIN dbo.MConversationParticipants cp
+                    ON cp.ConversationId = c.ConversationId
+                   AND cp.UserType = 'Patient'
+                INNER JOIN dbo.Users u
+                    ON u.Id = cp.UserId
+                WHERE c.ConversationType = 'Broadcast'
+                  AND c.IsActive = 1
+                  AND (
+                        c.Title = @ChannelTitle
+                        OR c.Title = @ChannelTitleAlt
+                      )
+                ORDER BY COALESCE(c.LastMessageAt, '1900-01-01') DESC, c.ConversationId DESC";
+
+            var rows = await connection.QueryAsync<ChatBroadcastChannelListItem>(sql, new
+            {
+                ChannelTitle = channelTitle,
+                ChannelTitleAlt = $"{staffType} Support Channel",
+                Limit = limit
+            });
+
+            return rows.ToList();
+        }
+
+        public async Task<(int totalUnreadCount, int channelsWithUnread)> GetBroadcastUnreadSummaryForStaffAsync(string staffType)
+        {
+            if (string.IsNullOrWhiteSpace(staffType))
+                throw new ArgumentException("staffType is required", nameof(staffType));
+
+            var channelTitle = $"{staffType} Channel";
+
+            using var connection = CreateConnection();
+
+            var sql = @"
+                SELECT
+                    SUM(x.UnreadCount) AS TotalUnreadCount,
+                    SUM(CASE WHEN x.UnreadCount > 0 THEN 1 ELSE 0 END) AS ChannelsWithUnread
+                FROM (
+                    SELECT
+                        c.ConversationId,
+                        (
+                            SELECT COUNT(1)
+                            FROM dbo.MChatMessages m
+                            WHERE m.ConversationId = c.ConversationId
+                              AND m.SenderType = 'Patient'
+                              AND m.IsRead = 0
+                              AND m.IsDeleted = 0
+                        ) AS UnreadCount
+                    FROM dbo.MConversations c
+                    WHERE c.ConversationType = 'Support'
+                      AND c.IsActive = 1
+                      AND (
+                            c.Title = @ChannelTitle
+                            OR c.Title = @ChannelTitleAlt
+                          )
+                ) x";
+
+            var result = await connection.QueryFirstOrDefaultAsync(sql, new
+            {
+                ChannelTitle = channelTitle,
+                ChannelTitleAlt = $"{staffType} Support Channel"
+            });
+
+            var totalUnread = result?.TotalUnreadCount == null ? 0 : (int)result.TotalUnreadCount;
+            var channelsWithUnread = result?.ChannelsWithUnread == null ? 0 : (int)result.ChannelsWithUnread;
+            return (totalUnread, channelsWithUnread);
+        }
+
+        public async Task<int> MarkBroadcastChannelAsReadForStaffAsync(int conversationId)
+        {
+            if (conversationId <= 0)
+                throw new ArgumentException("conversationId is required", nameof(conversationId));
+
+            using var connection = CreateConnection();
+
+            var sql = @"
+                UPDATE dbo.MChatMessages
+                SET IsRead = 1
+                WHERE ConversationId = @ConversationId
+                  AND SenderType = 'Patient'
+                  AND IsRead = 0
+                  AND IsDeleted = 0";
+
+            var affected = await connection.ExecuteAsync(sql, new { ConversationId = conversationId });
+            return affected;
         }
     }
 }

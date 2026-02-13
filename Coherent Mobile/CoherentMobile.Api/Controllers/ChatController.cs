@@ -1,9 +1,11 @@
 using CoherentMobile.Application.DTOs.Chat;
 using CoherentMobile.Application.Interfaces;
+using CoherentMobile.Domain.Interfaces;
 using CoherentMobile.ExternalIntegration.Interfaces;
 using CoherentMobile.ExternalIntegration.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq;
 using System.Security.Claims;
 
 namespace CoherentMobile.Api.Controllers
@@ -15,12 +17,14 @@ namespace CoherentMobile.Api.Controllers
     {
         private readonly IChatService _chatService;
         private readonly ICrmChatApiClient _crmChatApiClient;
+        private readonly IChatRepository _chatRepository;
         private readonly ILogger<ChatController> _logger;
 
-        public ChatController(IChatService chatService, ICrmChatApiClient crmChatApiClient, ILogger<ChatController> logger)
+        public ChatController(IChatService chatService, ICrmChatApiClient crmChatApiClient, IChatRepository chatRepository, ILogger<ChatController> logger)
         {
             _chatService = chatService;
             _crmChatApiClient = crmChatApiClient;
+            _chatRepository = chatRepository;
             _logger = logger;
         }
 
@@ -96,6 +100,183 @@ namespace CoherentMobile.Api.Controllers
                 return StatusCode(500, new { message = "An error occurred while calling CRM chat" });
             }
         }
+
+        #region Broadcast Channel APIs (Patient -> Staff)
+
+        [HttpPost("/api/v2/chat/broadcast-channels/get-or-create")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(CrmGetOrCreateBroadcastChannelResponse), 200)]
+        public async Task<IActionResult> CrmGetOrCreateBroadcastChannel([FromBody] CrmGetOrCreateBroadcastChannelRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.PatientMrNo))
+                {
+                    return BadRequest(new { message = "patientMrNo is required" });
+                }
+
+                if (string.IsNullOrWhiteSpace(request.StaffType))
+                {
+                    return BadRequest(new { message = "staffType is required (Nurse, Receptionist, or IVFLab)" });
+                }
+
+                var result = await _crmChatApiClient.GetOrCreateBroadcastChannelAsync(request);
+
+                if (result.ConversationId == null && !string.IsNullOrWhiteSpace(result.CrmThreadId))
+                {
+                    var idPart = result.CrmThreadId.StartsWith("CRM-TH-", StringComparison.OrdinalIgnoreCase)
+                        ? result.CrmThreadId.Substring("CRM-TH-".Length)
+                        : result.CrmThreadId;
+
+                    if (int.TryParse(idPart, out var conversationId) && conversationId > 0)
+                    {
+                        result.ConversationId = conversationId;
+                    }
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling CRM chat get-or-create broadcast channel");
+                return StatusCode(500, new { message = "An error occurred while creating broadcast channel" });
+            }
+        }
+
+        [HttpGet("/api/v2/chat/broadcast-channels")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(IEnumerable<CrmBroadcastChannelItem>), 200)]
+        public async Task<IActionResult> CrmGetBroadcastChannels([FromQuery] string staffType, [FromQuery] int limit = 50)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(staffType))
+                {
+                    return BadRequest(new { message = "staffType is required" });
+                }
+
+                var rows = await _chatRepository.GetBroadcastChannelsForStaffAsync(staffType, limit);
+                var result = rows.Select(x => new CrmBroadcastChannelItem
+                {
+                    ConversationId = x.ConversationId,
+                    CrmThreadId = $"CRM-TH-{x.ConversationId}",
+                    PatientMrNo = x.PatientMrNo,
+                    PatientName = x.PatientName,
+                    StaffType = staffType,
+                    LastMessageContent = x.LastMessagePreview,
+                    LastMessageAt = x.LastMessageAt,
+                    UnreadCount = x.UnreadCount
+                });
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling CRM chat broadcast channels");
+                return StatusCode(500, new { message = "An error occurred while getting broadcast channels" });
+            }
+        }
+
+        [HttpGet("/api/v2/chat/broadcast-channels/unread-summary")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(CrmStaffUnreadSummary), 200)]
+        public async Task<IActionResult> CrmGetStaffUnreadSummary([FromQuery] string staffType)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(staffType))
+                {
+                    return BadRequest(new { message = "staffType is required" });
+                }
+
+                var (totalUnreadCount, channelsWithUnread) = await _chatRepository.GetBroadcastUnreadSummaryForStaffAsync(staffType);
+                var result = new CrmStaffUnreadSummary
+                {
+                    StaffType = staffType,
+                    TotalUnreadCount = totalUnreadCount,
+                    ChannelsWithUnread = channelsWithUnread
+                };
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling CRM chat staff unread summary");
+                return StatusCode(500, new { message = "An error occurred while getting unread summary" });
+            }
+        }
+
+        [HttpGet("/api/v2/chat/threads/{crmThreadId}/messages")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(IEnumerable<CrmThreadMessage>), 200)]
+        public async Task<IActionResult> CrmGetThreadMessages([FromRoute] string crmThreadId, [FromQuery] int take = 50)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(crmThreadId))
+                {
+                    return BadRequest(new { message = "crmThreadId is required" });
+                }
+
+                var result = await _crmChatApiClient.GetThreadMessagesAsync(crmThreadId, take);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling CRM chat thread messages for {CrmThreadId}", crmThreadId);
+                return StatusCode(500, new { message = "An error occurred while getting thread messages" });
+            }
+        }
+
+        [HttpPost("/api/v2/chat/broadcast-channels/{crmThreadId}/mark-read")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(CrmMarkReadResponse), 200)]
+        public async Task<IActionResult> CrmMarkBroadcastChannelRead(
+            [FromRoute] string crmThreadId,
+            [FromQuery] long empId,
+            [FromQuery] string staffType)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(crmThreadId))
+                {
+                    return BadRequest(new { message = "crmThreadId is required" });
+                }
+
+                if (empId <= 0)
+                {
+                    return BadRequest(new { message = "empId is required" });
+                }
+
+                if (string.IsNullOrWhiteSpace(staffType))
+                {
+                    return BadRequest(new { message = "staffType is required" });
+                }
+
+                var idPart = crmThreadId.StartsWith("CRM-TH-", StringComparison.OrdinalIgnoreCase)
+                    ? crmThreadId.Substring("CRM-TH-".Length)
+                    : crmThreadId;
+
+                if (!int.TryParse(idPart, out var conversationId) || conversationId <= 0)
+                {
+                    return BadRequest(new { message = "Invalid crmThreadId" });
+                }
+
+                var messagesMarked = await _chatRepository.MarkBroadcastChannelAsReadForStaffAsync(conversationId);
+                return Ok(new CrmMarkReadResponse
+                {
+                    Success = true,
+                    MessagesMarked = messagesMarked
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling CRM chat mark broadcast channel read for {CrmThreadId}", crmThreadId);
+                return StatusCode(500, new { message = "An error occurred while marking channel as read" });
+            }
+        }
+
+        #endregion
 
         /// <summary>
         /// Create or get existing one-to-one conversation

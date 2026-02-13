@@ -100,6 +100,32 @@ public class MedicationRemindersController : ControllerBase
         }
     }
 
+    [HttpPost("{medicationReminderId:int}/action")]
+    [ProducesResponseType(typeof(object), 200)]
+    public async Task<IActionResult> ApplyAction(int medicationReminderId, [FromBody] MedicationReminderActionRequestDto request)
+    {
+        try
+        {
+            var (userId, userType) = GetCurrentUser();
+            if (userId == 0) return Unauthorized();
+
+            var ok = await _service.ApplyActionAsync(userId, userType, medicationReminderId, request);
+            if (!ok) return NotFound(new { message = "Medication reminder not found" });
+
+            return Ok(new { success = true });
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid medication reminder action");
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error applying medication reminder action");
+            return StatusCode(500, new { message = "An error occurred while applying medication reminder action" });
+        }
+    }
+
     private (int userId, string userType) GetCurrentUser()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

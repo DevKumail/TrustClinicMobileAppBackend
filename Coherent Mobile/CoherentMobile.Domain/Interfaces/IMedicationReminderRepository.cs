@@ -12,5 +12,7 @@ public interface IMedicationReminderRepository
     Task<IReadOnlyList<MedicationReminder>> GetDueAsync(DateTime nowUtc, int take = 200);
     Task<int> MarkTriggeredAsync(int medicationReminderId, DateTime lastTriggeredAtUtc, DateTime? nextTriggerAtUtc, bool isActive);
     Task<int> DeactivateAsync(int medicationReminderId, int userId, string userType);
+
+    Task<int> ApplyActionAsync(int medicationReminderId, int userId, string userType, string action, DateTime nowUtc);
 }
 

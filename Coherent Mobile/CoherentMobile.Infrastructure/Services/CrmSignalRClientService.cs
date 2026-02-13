@@ -143,11 +143,14 @@ public class CrmSignalRClientService : BackgroundService
         try
         {
             _logger.LogInformation(
-                "Received CRM message: ThreadId={ThreadId}, MessageId={MessageId}, SenderType={SenderType}",
-                msg.CrmThreadId, msg.CrmMessageId, msg.SenderType);
+                "Received CRM message: ThreadId={ThreadId}, MessageId={MessageId}, SenderType={SenderType}, SenderEmpId={SenderEmpId}, SenderEmpType={SenderEmpType}",
+                msg.CrmThreadId, msg.CrmMessageId, msg.SenderType, msg.SenderEmpId, msg.SenderEmpType);
 
-            // Only process doctor -> patient messages
-            if (!string.Equals(msg.SenderType, "Doctor", StringComparison.OrdinalIgnoreCase))
+            // Process doctor -> patient OR staff -> patient messages
+            var isDoctor = string.Equals(msg.SenderType, "Doctor", StringComparison.OrdinalIgnoreCase);
+            var isStaff = string.Equals(msg.SenderType, "Staff", StringComparison.OrdinalIgnoreCase);
+            
+            if (!isDoctor && !isStaff)
             {
                 return;
             }
@@ -198,16 +201,16 @@ public class CrmSignalRClientService : BackgroundService
                 return;
             }
 
-            // Get doctor's ID (SenderId) - for now use 0 as we don't have doctor mapping
-            // The message is from doctor but we store with SenderId as doctor's ID if available
-            var doctorId = 0; // TODO: Look up doctor ID from license number if needed
+            // Get sender ID - for doctor use 0, for staff use EmpId
+            var senderId = isStaff && msg.SenderEmpId.HasValue ? (int)msg.SenderEmpId.Value : 0;
+            var senderType = isStaff ? "Staff" : "Doctor";
 
             // Save message to local database with CrmMessageId for deduplication
             var chatMessage = new ChatMessage
             {
                 ConversationId = conversationId,
-                SenderId = doctorId,
-                SenderType = "Doctor",
+                SenderId = senderId,
+                SenderType = senderType,
                 MessageType = msg.MessageType ?? "Text",
                 Content = msg.Content,
                 FileUrl = msg.FileUrl,
@@ -230,6 +233,12 @@ public class CrmSignalRClientService : BackgroundService
                 "Saved CRM message {CrmMessageId} as local message {MessageId} in conversation {ConversationId}",
                 msg.CrmMessageId, messageId, conversationId);
 
+            // Determine notification title based on sender type
+            var staffTypeName = GetStaffTypeName(msg.SenderEmpType);
+            var title = isStaff 
+                ? $"New Message from {staffTypeName}" 
+                : "New Message from Doctor";
+
             // Send push notification to patient
             var notificationData = new Dictionary<string, string>
             {
@@ -238,11 +247,16 @@ public class CrmSignalRClientService : BackgroundService
                 ["messageId"] = messageId.ToString(),
                 ["crmThreadId"] = msg.CrmThreadId ?? "",
                 ["crmMessageId"] = msg.CrmMessageId ?? "",
-                ["senderType"] = "Doctor",
+                ["senderType"] = senderType,
                 ["messageType"] = msg.MessageType ?? "Text"
             };
 
-            var title = "New Message from Doctor";
+            if (isStaff)
+            {
+                notificationData["senderEmpId"] = msg.SenderEmpId?.ToString() ?? "";
+                notificationData["senderEmpType"] = msg.SenderEmpType?.ToString() ?? "";
+            }
+
             var body = msg.MessageType == "Text" 
                 ? (msg.Content?.Length > 100 ? msg.Content.Substring(0, 100) + "..." : msg.Content ?? "You have a new message")
                 : $"Sent a {msg.MessageType?.ToLower() ?? "message"}";
@@ -370,6 +384,19 @@ public class CrmSignalRClientService : BackgroundService
         }
         await base.StopAsync(cancellationToken);
     }
+
+    private static string GetStaffTypeName(int? empType)
+    {
+        return empType switch
+        {
+            1 => "Doctor",
+            2 => "Nurse",
+            3 => "Receptionist",
+            4 => "IVF Lab",
+            5 => "Admin",
+            _ => "Staff"
+        };
+    }
 }
 
 // DTOs for CRM SignalR events
@@ -380,9 +407,12 @@ public class CrmChatMessageEvent
     public string? SenderType { get; set; }
     public string? SenderMrNo { get; set; }
     public string? SenderDoctorLicenseNo { get; set; }
+    public long? SenderEmpId { get; set; }
+    public int? SenderEmpType { get; set; }
     public string? ReceiverType { get; set; }
     public string? ReceiverMrNo { get; set; }
     public string? ReceiverDoctorLicenseNo { get; set; }
+    public string? ReceiverStaffType { get; set; }
     public string? MessageType { get; set; }
     public string? Content { get; set; }
     public string? FileUrl { get; set; }

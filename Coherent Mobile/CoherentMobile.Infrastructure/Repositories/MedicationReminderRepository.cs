@@ -1,5 +1,6 @@
 
 using System.Data;
+using System;
 using CoherentMobile.Domain.Entities;
 using CoherentMobile.Domain.Interfaces;
 using Dapper;
@@ -166,6 +167,87 @@ WHERE MedicationReminderId = @MedicationReminderId
   AND IsActive = 1;";
 
         return await connection.ExecuteAsync(sql, new { MedicationReminderId = medicationReminderId, UserId = userId, UserType = userType });
+    }
+
+    public async Task<int> ApplyActionAsync(int medicationReminderId, int userId, string userType, string action, DateTime nowUtc)
+    {
+        using var connection = CreateConnection();
+
+        var raw = (action ?? string.Empty).Trim();
+
+        int? actionTypeId = null;
+        if (int.TryParse(raw, out var parsedId) && parsedId > 0)
+        {
+            actionTypeId = parsedId;
+        }
+
+        var normalized = raw.ToLowerInvariant();
+        if (actionTypeId == null)
+        {
+            actionTypeId = normalized switch
+            {
+                "taken" => 1,
+                "not taken" => 2,
+                "not_taken" => 2,
+                "nottaken" => 2,
+                "remind me later" => 3,
+                "remind_me_later" => 3,
+                "remindmelater" => 3,
+                "later" => 3,
+                _ => null
+            };
+        }
+
+        if (actionTypeId is 1 or 2)
+        {
+            var sql = @"
+UPDATE dbo.MMedicationReminders
+SET IsActive = 0,
+    LastActionTypeId = @LastActionTypeId,
+    LastActionAtUtc = @NowUtc,
+    UpdatedAtUtc = GETUTCDATE()
+WHERE MedicationReminderId = @MedicationReminderId
+  AND UserId = @UserId
+  AND UserType = @UserType
+  AND IsActive = 1;";
+
+            return await connection.ExecuteAsync(sql, new
+            {
+                MedicationReminderId = medicationReminderId,
+                UserId = userId,
+                UserType = userType,
+                LastActionTypeId = actionTypeId,
+                NowUtc = nowUtc
+            });
+        }
+
+        if (actionTypeId == 3)
+        {
+            var next = nowUtc.AddMinutes(5);
+
+            var sql = @"
+UPDATE dbo.MMedicationReminders
+SET NextTriggerAtUtc = @NextTriggerAtUtc,
+    LastActionTypeId = @LastActionTypeId,
+    LastActionAtUtc = @NowUtc,
+    UpdatedAtUtc = GETUTCDATE()
+WHERE MedicationReminderId = @MedicationReminderId
+  AND UserId = @UserId
+  AND UserType = @UserType
+  AND IsActive = 1;";
+
+            return await connection.ExecuteAsync(sql, new
+            {
+                MedicationReminderId = medicationReminderId,
+                UserId = userId,
+                UserType = userType,
+                NextTriggerAtUtc = next,
+                LastActionTypeId = actionTypeId,
+                NowUtc = nowUtc
+            });
+        }
+
+        throw new ArgumentException("Invalid action. Allowed: Taken(1), NotTaken(2), RemindMeLater(3)", nameof(action));
     }
 }
 

@@ -9,6 +9,7 @@ public interface IMedicationReminderService
     Task<int> CreateAsync(int userId, string userType, MedicationReminderUpsertRequestDto request);
     Task<bool> UpdateAsync(int userId, string userType, int medicationReminderId, MedicationReminderUpsertRequestDto request);
     Task<bool> DeactivateAsync(int userId, string userType, int medicationReminderId);
+    Task<bool> ApplyActionAsync(int userId, string userType, int medicationReminderId, MedicationReminderActionRequestDto request);
     Task<int> ProcessDueRemindersAsync(DateTime nowUtc, int take = 200);
 }
 

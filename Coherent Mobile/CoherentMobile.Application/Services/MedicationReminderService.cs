@@ -98,6 +98,29 @@ public class MedicationReminderService : IMedicationReminderService
         return affected > 0;
     }
 
+    public async Task<bool> ApplyActionAsync(int userId, string userType, int medicationReminderId, MedicationReminderActionRequestDto request)
+    {
+        if (request == null)
+            throw new ArgumentNullException(nameof(request));
+
+        if (request.ActionId == null && string.IsNullOrWhiteSpace(request.Action))
+            throw new ArgumentException("ActionId or Action is required", nameof(request));
+
+        var existing = await _repo.GetByIdAsync(medicationReminderId);
+        if (existing == null)
+            return false;
+
+        if (existing.UserId != userId || !existing.UserType.Equals(userType, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var actionValue = request.ActionId.HasValue
+            ? request.ActionId.Value.ToString()
+            : request.Action;
+
+        var affected = await _repo.ApplyActionAsync(medicationReminderId, userId, userType, actionValue, DateTime.UtcNow);
+        return affected > 0;
+    }
+
     public async Task<int> ProcessDueRemindersAsync(DateTime nowUtc, int take = 200)
     {
         var due = await _repo.GetDueAsync(nowUtc, take);

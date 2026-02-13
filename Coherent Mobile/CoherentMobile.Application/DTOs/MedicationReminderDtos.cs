@@ -26,3 +26,9 @@ public class MedicationReminderUpsertRequestDto
     public int? RepeatIntervalMinutes { get; set; }
 }
 
+public class MedicationReminderActionRequestDto
+{
+    public int? ActionId { get; set; }
+    public string Action { get; set; } = string.Empty;
+}
+

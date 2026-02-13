@@ -200,5 +200,194 @@ namespace CoherentMobile.ExternalIntegration.Clients
                 throw new ApplicationException($"Failed to get conversations: {ex.Message}", ex);
             }
         }
+
+        public async Task<CrmGetOrCreateBroadcastChannelResponse> GetOrCreateBroadcastChannelAsync(CrmGetOrCreateBroadcastChannelRequest request)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "CRM Chat: GetOrCreateBroadcastChannel PatientMrNo={PatientMrNo}, StaffType={StaffType}",
+                    request.PatientMrNo,
+                    request.StaffType);
+
+                var payload = JsonSerializer.Serialize(request, JsonOptions);
+                using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.PostAsync($"{_v2BaseUrl}/chat/broadcast-channels/get-or-create", content);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError(
+                        "CRM Chat GetOrCreateBroadcastChannel upstream failed. Status: {StatusCode}. Body: {Body}",
+                        (int)response.StatusCode,
+                        responseContent);
+                    throw new ApplicationException(
+                        $"Upstream CRM Chat GetOrCreateBroadcastChannel failed. StatusCode={(int)response.StatusCode}. Body={responseContent}");
+                }
+
+                var result = JsonSerializer.Deserialize<CrmGetOrCreateBroadcastChannelResponse>(responseContent, JsonOptions);
+                return result ?? new CrmGetOrCreateBroadcastChannelResponse();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CRM Chat: Error in GetOrCreateBroadcastChannel");
+                throw new ApplicationException($"Failed to get or create broadcast channel: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<IEnumerable<CrmBroadcastChannelItem>> GetBroadcastChannelsAsync(string staffType, int limit = 50)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "CRM Chat: GetBroadcastChannels StaffType={StaffType}, Limit={Limit}",
+                    staffType,
+                    limit);
+
+                if (string.IsNullOrWhiteSpace(staffType))
+                {
+                    throw new ArgumentException("staffType is required", nameof(staffType));
+                }
+
+                var url = $"{_v2BaseUrl}/chat/broadcast-channels?staffType={Uri.EscapeDataString(staffType)}&limit={limit}";
+
+                var response = await _httpClient.GetAsync(url);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError(
+                        "CRM Chat GetBroadcastChannels upstream failed. Status: {StatusCode}. Body: {Body}",
+                        (int)response.StatusCode,
+                        responseContent);
+                    throw new ApplicationException(
+                        $"Upstream CRM Chat GetBroadcastChannels failed. StatusCode={(int)response.StatusCode}. Body={responseContent}");
+                }
+
+                var result = JsonSerializer.Deserialize<List<CrmBroadcastChannelItem>>(responseContent, JsonOptions);
+                return result ?? new List<CrmBroadcastChannelItem>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CRM Chat: Error in GetBroadcastChannels");
+                throw new ApplicationException($"Failed to get broadcast channels: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<CrmStaffUnreadSummary> GetStaffUnreadSummaryAsync(string staffType)
+        {
+            try
+            {
+                _logger.LogInformation("CRM Chat: GetStaffUnreadSummary StaffType={StaffType}", staffType);
+
+                if (string.IsNullOrWhiteSpace(staffType))
+                {
+                    throw new ArgumentException("staffType is required", nameof(staffType));
+                }
+
+                var url = $"{_v2BaseUrl}/chat/broadcast-channels/unread-summary?staffType={Uri.EscapeDataString(staffType)}";
+
+                var response = await _httpClient.GetAsync(url);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError(
+                        "CRM Chat GetStaffUnreadSummary upstream failed. Status: {StatusCode}. Body: {Body}",
+                        (int)response.StatusCode,
+                        responseContent);
+                    throw new ApplicationException(
+                        $"Upstream CRM Chat GetStaffUnreadSummary failed. StatusCode={(int)response.StatusCode}. Body={responseContent}");
+                }
+
+                var result = JsonSerializer.Deserialize<CrmStaffUnreadSummary>(responseContent, JsonOptions);
+                return result ?? new CrmStaffUnreadSummary();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CRM Chat: Error in GetStaffUnreadSummary");
+                throw new ApplicationException($"Failed to get staff unread summary: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<IEnumerable<CrmThreadMessage>> GetThreadMessagesAsync(string crmThreadId, int take = 50)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "CRM Chat: GetThreadMessages CrmThreadId={CrmThreadId}, Take={Take}",
+                    crmThreadId,
+                    take);
+
+                if (string.IsNullOrWhiteSpace(crmThreadId))
+                {
+                    throw new ArgumentException("crmThreadId is required", nameof(crmThreadId));
+                }
+
+                var url = $"{_v2BaseUrl}/chat/threads/{Uri.EscapeDataString(crmThreadId)}/messages?take={take}";
+
+                var response = await _httpClient.GetAsync(url);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError(
+                        "CRM Chat GetThreadMessages upstream failed. Status: {StatusCode}. Body: {Body}",
+                        (int)response.StatusCode,
+                        responseContent);
+                    throw new ApplicationException(
+                        $"Upstream CRM Chat GetThreadMessages failed. StatusCode={(int)response.StatusCode}. Body={responseContent}");
+                }
+
+                var result = JsonSerializer.Deserialize<List<CrmThreadMessage>>(responseContent, JsonOptions);
+                return result ?? new List<CrmThreadMessage>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CRM Chat: Error in GetThreadMessages");
+                throw new ApplicationException($"Failed to get thread messages: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<CrmMarkReadResponse> MarkBroadcastChannelReadAsync(string crmThreadId, long empId, string staffType)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "CRM Chat: MarkBroadcastChannelRead CrmThreadId={CrmThreadId}, EmpId={EmpId}, StaffType={StaffType}",
+                    crmThreadId,
+                    empId,
+                    staffType);
+
+                if (string.IsNullOrWhiteSpace(crmThreadId))
+                {
+                    throw new ArgumentException("crmThreadId is required", nameof(crmThreadId));
+                }
+
+                var url = $"{_v2BaseUrl}/chat/broadcast-channels/{Uri.EscapeDataString(crmThreadId)}/mark-read?empId={empId}&staffType={Uri.EscapeDataString(staffType)}";
+
+                var response = await _httpClient.PostAsync(url, null);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError(
+                        "CRM Chat MarkBroadcastChannelRead upstream failed. Status: {StatusCode}. Body: {Body}",
+                        (int)response.StatusCode,
+                        responseContent);
+                    throw new ApplicationException(
+                        $"Upstream CRM Chat MarkBroadcastChannelRead failed. StatusCode={(int)response.StatusCode}. Body={responseContent}");
+                }
+
+                var result = JsonSerializer.Deserialize<CrmMarkReadResponse>(responseContent, JsonOptions);
+                return result ?? new CrmMarkReadResponse();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CRM Chat: Error in MarkBroadcastChannelRead");
+                throw new ApplicationException($"Failed to mark broadcast channel as read: {ex.Message}", ex);
+            }
+        }
     }
 }
