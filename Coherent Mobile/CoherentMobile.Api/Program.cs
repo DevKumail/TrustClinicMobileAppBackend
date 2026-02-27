@@ -44,6 +44,9 @@ builder.Services.AddExternalIntegrationServices(builder.Configuration); // Exter
 // Background services
 builder.Services.AddHostedService<MedicationReminderScheduler>();
 
+// ChatHub notifier — bridges CRM SignalR events to Mobile ChatHub for real-time delivery
+builder.Services.AddSingleton<CoherentMobile.Application.Interfaces.IChatHubNotifier, ChatHubNotifier>();
+
 // ===== JWT Authentication Configuration =====
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings["Secret"] ?? "YourSuperSecretKeyMinimum32Characters!!";

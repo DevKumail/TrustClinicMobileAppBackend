@@ -2,7 +2,6 @@ using CoherentMobile.Application.DTOs.Chat;
 using CoherentMobile.Application.Interfaces;
 using CoherentMobile.Domain.Entities;
 using CoherentMobile.Domain.Interfaces;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +18,7 @@ public class CrmSignalRClientService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CrmSignalRClientService> _logger;
+    private readonly IChatHubNotifier _chatHubNotifier;
     private readonly string? _hubUrl;
     private readonly string? _apiKey;
     private HubConnection? _hubConnection;
@@ -28,10 +28,12 @@ public class CrmSignalRClientService : BackgroundService
     public CrmSignalRClientService(
         IServiceScopeFactory scopeFactory,
         IConfiguration configuration,
-        ILogger<CrmSignalRClientService> logger)
+        ILogger<CrmSignalRClientService> logger,
+        IChatHubNotifier chatHubNotifier)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _chatHubNotifier = chatHubNotifier;
         
         // Get SignalR hub URL from configuration (prefer explicit SignalRHubUrl, fallback to constructing from V1BaseUrl)
         _hubUrl = configuration["CrmChatApi:SignalRHubUrl"];
@@ -232,6 +234,40 @@ public class CrmSignalRClientService : BackgroundService
             _logger.LogInformation(
                 "Saved CRM message {CrmMessageId} as local message {MessageId} in conversation {ConversationId}",
                 msg.CrmMessageId, messageId, conversationId);
+
+            // ── Re-broadcast to Mobile ChatHub so Flutter clients get real-time updates ──
+            try
+            {
+                var dto = new ChatMessageDto
+                {
+                    MessageId = messageId,
+                    ConversationId = conversationId,
+                    SenderId = senderId,
+                    SenderType = senderType,
+                    SenderName = isStaff ? GetStaffTypeName(msg.SenderEmpType) : "Doctor",
+                    MessageType = msg.MessageType ?? "Text",
+                    Content = msg.Content,
+                    FileUrl = msg.FileUrl,
+                    FileName = msg.FileName,
+                    FileSize = msg.FileSize,
+                    SentAt = chatMessage.SentAt,
+                    IsDelivered = false,
+                    IsRead = false,
+                    CrmMessageId = msg.CrmMessageId,
+                    CrmThreadId = msg.CrmThreadId
+                };
+
+                await _chatHubNotifier.SendMessageToConversationAsync(conversationId, dto);
+                await _chatHubNotifier.NotifyConversationUpdatedAsync(conversationId);
+
+                _logger.LogInformation(
+                    "Broadcasted message {MessageId} to Mobile ChatHub conversation {ConversationId}",
+                    messageId, conversationId);
+            }
+            catch (Exception hubEx)
+            {
+                _logger.LogError(hubEx, "Failed to broadcast message {MessageId} to Mobile ChatHub", messageId);
+            }
 
             // Determine notification title based on sender type
             var staffTypeName = GetStaffTypeName(msg.SenderEmpType);
