@@ -405,24 +405,6 @@ namespace CoherentMobile.Api.Controllers
         }
 
         /// <summary>
-        /// Get user's online status
-        /// </summary>
-        [HttpGet("users/{userId}/status")]
-        public async Task<IActionResult> GetUserStatus(int userId, [FromQuery] string userType)
-        {
-            try
-            {
-                var isOnline = await _chatService.GetUserOnlineStatusAsync(userId, userType);
-                return Ok(new { userId, userType, isOnline });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting user status");
-                return StatusCode(500, new { message = "An error occurred while checking user status" });
-            }
-        }
-
-        /// <summary>
         /// Upload file for chat (images, documents)
         /// </summary>
         [HttpPost("upload")]
