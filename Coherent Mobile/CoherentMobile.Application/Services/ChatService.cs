@@ -3,6 +3,7 @@ using CoherentMobile.Application.Interfaces;
 using CoherentMobile.Domain.Entities;
 using CoherentMobile.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
+using System;
 
 namespace CoherentMobile.Application.Services
 {
@@ -314,6 +315,112 @@ namespace CoherentMobile.Application.Services
                 _logger.LogError(ex, "Error getting online status for user {UserId}", userId);
                 return false;
             }
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  CRM V2 direct-DB operations (replaces API proxy to Web Backend)
+        // ══════════════════════════════════════════════════════════════
+
+        private static string NormalizeSenderType(string senderType)
+        {
+            if (string.Equals(senderType, "Patient", StringComparison.OrdinalIgnoreCase)) return "Patient";
+            if (string.Equals(senderType, "Doctor", StringComparison.OrdinalIgnoreCase)) return "Doctor";
+            if (string.Equals(senderType, "Staff", StringComparison.OrdinalIgnoreCase)) return "Staff";
+            throw new ArgumentException($"Invalid senderType: {senderType}");
+        }
+
+        private static bool TryParseConversationId(string crmThreadId, out int conversationId)
+        {
+            conversationId = 0;
+            if (string.IsNullOrWhiteSpace(crmThreadId)) return false;
+            if (crmThreadId.StartsWith("CRM-TH-", StringComparison.OrdinalIgnoreCase))
+                crmThreadId = crmThreadId.Substring("CRM-TH-".Length);
+            return int.TryParse(crmThreadId, out conversationId) && conversationId > 0;
+        }
+
+        public async Task<(int conversationId, string patientMrNo, string doctorLicenseNo)> CrmGetOrCreateThreadAsync(string patientMrNo, string doctorLicenseNo)
+        {
+            if (string.IsNullOrWhiteSpace(patientMrNo))
+                throw new ArgumentException("patientMrNo is required");
+            if (string.IsNullOrWhiteSpace(doctorLicenseNo))
+                throw new ArgumentException("doctorLicenseNo is required");
+
+            var conversationId = await _chatRepo.CrmGetOrCreateThreadAsync(patientMrNo, doctorLicenseNo);
+            return (conversationId, patientMrNo, doctorLicenseNo);
+        }
+
+        public async Task<(int messageId, string crmThreadId, bool isDoctorToPatient, bool isStaffToPatient)> CrmSendMessageAsync(
+            string crmThreadId, string senderType, string? senderMrNo, string? senderDoctorLicenseNo,
+            long? senderEmpId, string receiverType, string messageType,
+            string? content, string? fileUrl, string? fileName, long? fileSize,
+            Guid clientMessageId, DateTime? sentAt)
+        {
+            if (string.IsNullOrWhiteSpace(crmThreadId))
+                throw new ArgumentException("crmThreadId is required");
+            if (clientMessageId == Guid.Empty)
+                throw new ArgumentException("clientMessageId is required");
+            if (!TryParseConversationId(crmThreadId, out var conversationId))
+                throw new ArgumentException("Invalid crmThreadId");
+
+            var validTypes = new[] { "text", "image", "file", "audio" };
+            var normalizedMsgType = string.IsNullOrWhiteSpace(messageType) ? "text" : messageType.ToLower();
+            if (!validTypes.Contains(normalizedMsgType))
+                throw new ArgumentException($"Invalid messageType '{messageType}'");
+
+            var normalizedSender = NormalizeSenderType(senderType);
+            var normalizedReceiver = NormalizeSenderType(receiverType);
+            var senderId = await _chatRepo.ResolveSenderIdAsync(normalizedSender, senderMrNo, senderDoctorLicenseNo, senderEmpId);
+
+            var effectiveSentAt = (sentAt.HasValue && sentAt.Value != default) ? sentAt.Value : DateTime.UtcNow;
+
+            var (messageId, _) = await _chatRepo.CrmInsertMessageAsync(
+                conversationId, senderId, normalizedSender, normalizedMsgType,
+                content, fileUrl, fileName, fileSize,
+                effectiveSentAt, clientMessageId);
+
+            var isDoctorToPatient = normalizedSender == "Doctor" && normalizedReceiver == "Patient";
+            var isStaffToPatient = normalizedSender == "Staff" && normalizedReceiver == "Patient";
+
+            return (messageId, crmThreadId, isDoctorToPatient, isStaffToPatient);
+        }
+
+        public async Task<List<CrmMessageUpdateRow>> CrmGetMessageUpdatesAsync(DateTime since, int limit)
+        {
+            return await _chatRepo.CrmGetDoctorToPatientUpdatesAsync(since.ToUniversalTime(), limit);
+        }
+
+        public async Task<List<CrmConversationRow>> CrmGetConversationsAsync(string patientMrNo, int limit)
+        {
+            if (string.IsNullOrWhiteSpace(patientMrNo))
+                throw new ArgumentException("patientMrNo is required");
+            return await _chatRepo.CrmGetPatientConversationsAsync(patientMrNo, limit);
+        }
+
+        public async Task<(int conversationId, string channelTitle, string patientMrNo, string staffType)> CrmGetOrCreateBroadcastChannelAsync(string patientMrNo, string staffType)
+        {
+            if (string.IsNullOrWhiteSpace(patientMrNo))
+                throw new ArgumentException("patientMrNo is required");
+            if (string.IsNullOrWhiteSpace(staffType))
+                throw new ArgumentException("staffType is required (Nurse, Receptionist, or IVFLab)");
+
+            var validStaffTypes = new[] { "Nurse", "Receptionist", "IVFLab", "OTNurse" };
+            if (!validStaffTypes.Contains(staffType, StringComparer.OrdinalIgnoreCase))
+                throw new ArgumentException($"staffType must be one of: {string.Join(", ", validStaffTypes)}");
+
+            var patientId = await _chatRepo.ResolvePatientIdAsync(patientMrNo)
+                ?? throw new InvalidOperationException($"Patient not found for MRNO {patientMrNo}");
+
+            var (conversationId, channelTitle) = await _chatRepo.CrmGetOrCreateBroadcastChannelAsync(patientId, staffType);
+            return (conversationId, channelTitle, patientMrNo, staffType);
+        }
+
+        public async Task<List<CrmThreadMessageRow>> CrmGetThreadMessagesAsync(string crmThreadId, int take)
+        {
+            if (string.IsNullOrWhiteSpace(crmThreadId))
+                throw new ArgumentException("crmThreadId is required");
+            if (!TryParseConversationId(crmThreadId, out var conversationId))
+                throw new ArgumentException("Invalid crmThreadId");
+            return await _chatRepo.CrmGetThreadMessagesAsync(conversationId, take);
         }
     }
 }

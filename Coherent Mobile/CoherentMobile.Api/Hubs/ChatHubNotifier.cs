@@ -24,10 +24,15 @@ namespace CoherentMobile.Api.Hubs
         public async Task SendMessageToConversationAsync(int conversationId, ChatMessageDto message)
         {
             var groupName = $"conversation_{conversationId}";
-            await _hubContext.Clients.Group(groupName).ReceiveMessage(message);
             _logger.LogInformation(
-                "Broadcasted message {MessageId} to ChatHub group {Group}",
-                message.MessageId, groupName);
+                "[ChatHubNotifier] Broadcasting ReceiveMessage to group {Group} — MessageId={MessageId}, Content={Content}",
+                groupName, message.MessageId, message.Content?.Substring(0, Math.Min(message.Content?.Length ?? 0, 50)));
+            
+            await _hubContext.Clients.Group(groupName).ReceiveMessage(message);
+            
+            _logger.LogInformation(
+                "[ChatHubNotifier] Broadcast DONE for group {Group} — MessageId={MessageId}",
+                groupName, message.MessageId);
         }
 
         public async Task NotifyConversationUpdatedAsync(int conversationId)

@@ -1,4 +1,5 @@
 using CoherentMobile.Application.DTOs.Chat;
+using CoherentMobile.Domain.Entities;
 
 namespace CoherentMobile.Application.Interfaces
 {
@@ -19,5 +20,23 @@ namespace CoherentMobile.Application.Interfaces
         // User Status
         Task UpdateUserStatusAsync(int userId, string userType, bool isOnline, string? connectionId = null, string? deviceType = null);
         Task<bool> GetUserOnlineStatusAsync(int userId, string userType);
+
+        // ── CRM V2 direct-DB operations (replaces API proxy) ──
+
+        Task<(int conversationId, string patientMrNo, string doctorLicenseNo)> CrmGetOrCreateThreadAsync(string patientMrNo, string doctorLicenseNo);
+
+        Task<(int messageId, string crmThreadId, bool isDoctorToPatient, bool isStaffToPatient)> CrmSendMessageAsync(
+            string crmThreadId, string senderType, string? senderMrNo, string? senderDoctorLicenseNo,
+            long? senderEmpId, string receiverType, string messageType,
+            string? content, string? fileUrl, string? fileName, long? fileSize,
+            Guid clientMessageId, DateTime? sentAt);
+
+        Task<List<CrmMessageUpdateRow>> CrmGetMessageUpdatesAsync(DateTime since, int limit);
+
+        Task<List<CrmConversationRow>> CrmGetConversationsAsync(string patientMrNo, int limit);
+
+        Task<(int conversationId, string channelTitle, string patientMrNo, string staffType)> CrmGetOrCreateBroadcastChannelAsync(string patientMrNo, string staffType);
+
+        Task<List<CrmThreadMessageRow>> CrmGetThreadMessagesAsync(string crmThreadId, int take);
     }
 }

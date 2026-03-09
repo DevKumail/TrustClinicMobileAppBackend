@@ -45,5 +45,37 @@ namespace CoherentMobile.Domain.Interfaces
         Task<List<ChatBroadcastChannelListItem>> GetBroadcastChannelsForStaffAsync(string staffType, int limit = 50);
         Task<(int totalUnreadCount, int channelsWithUnread)> GetBroadcastUnreadSummaryForStaffAsync(string staffType);
         Task<int> MarkBroadcastChannelAsReadForStaffAsync(int conversationId);
+
+        // ── CRM V2 direct-DB methods (replaces API proxy to Web Backend) ──
+
+        /// <summary>Resolve Patient UserId from MRNO</summary>
+        Task<int?> ResolvePatientIdAsync(string mrNo);
+
+        /// <summary>Resolve Doctor UserId (DId) from LicenceNo</summary>
+        Task<int?> ResolveDoctorIdAsync(string licenceNo);
+
+        /// <summary>Resolve sender userId from type + identifiers</summary>
+        Task<int> ResolveSenderIdAsync(string senderType, string? mrNo, string? licenceNo, long? empId);
+
+        /// <summary>Get or create one-to-one doctor↔patient thread via SP</summary>
+        Task<int> CrmGetOrCreateThreadAsync(string patientMrNo, string doctorLicenseNo);
+
+        /// <summary>Insert a CRM-style message with ClientMessageId idempotency. Returns (messageId, isDuplicate)</summary>
+        Task<(int messageId, bool isDuplicate)> CrmInsertMessageAsync(
+            int conversationId, int senderId, string senderType, string messageType,
+            string? content, string? fileUrl, string? fileName, long? fileSize,
+            DateTime sentAt, Guid clientMessageId);
+
+        /// <summary>Get doctor→patient message updates since a timestamp</summary>
+        Task<List<CrmMessageUpdateRow>> CrmGetDoctorToPatientUpdatesAsync(DateTime sinceUtc, int limit);
+
+        /// <summary>Get patient's conversation list with doctor info</summary>
+        Task<List<CrmConversationRow>> CrmGetPatientConversationsAsync(string patientMrNo, int limit);
+
+        /// <summary>Get or create broadcast channel via SP</summary>
+        Task<(int conversationId, string channelTitle)> CrmGetOrCreateBroadcastChannelAsync(int patientUserId, string staffType);
+
+        /// <summary>Get messages for a thread (by CRM-TH-{id})</summary>
+        Task<List<CrmThreadMessageRow>> CrmGetThreadMessagesAsync(int conversationId, int take);
     }
 }

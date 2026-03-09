@@ -393,5 +393,237 @@ namespace CoherentMobile.Infrastructure.Repositories
             var affected = await connection.ExecuteAsync(sql, new { ConversationId = conversationId });
             return affected;
         }
+
+        // ══════════════════════════════════════════════════════════════
+        //  CRM V2 direct-DB methods (replaces API proxy to Web Backend)
+        // ══════════════════════════════════════════════════════════════
+
+        public async Task<int?> ResolvePatientIdAsync(string mrNo)
+        {
+            using var connection = CreateConnection();
+            return await connection.QueryFirstOrDefaultAsync<int?>(
+                "SELECT TOP 1 Id FROM dbo.Users WHERE MRNO = @MRNO AND IsDeleted = 0",
+                new { MRNO = mrNo });
+        }
+
+        public async Task<int?> ResolveDoctorIdAsync(string licenceNo)
+        {
+            using var connection = CreateConnection();
+            return await connection.QueryFirstOrDefaultAsync<int?>(
+                "SELECT TOP 1 DId FROM dbo.MDoctors WHERE LicenceNo = @LicenceNo",
+                new { LicenceNo = licenceNo });
+        }
+
+        public async Task<int> ResolveSenderIdAsync(string senderType, string? mrNo, string? licenceNo, long? empId)
+        {
+            if (string.Equals(senderType, "Patient", StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(mrNo))
+                    throw new ArgumentException("senderMrNo is required for Patient");
+                var id = await ResolvePatientIdAsync(mrNo);
+                return id ?? throw new InvalidOperationException($"Patient not found for MRNO {mrNo}");
+            }
+
+            if (string.Equals(senderType, "Doctor", StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(licenceNo))
+                    throw new ArgumentException("senderDoctorLicenseNo is required for Doctor");
+                var id = await ResolveDoctorIdAsync(licenceNo);
+                return id ?? throw new InvalidOperationException($"Doctor not found for LicenceNo {licenceNo}");
+            }
+
+            if (string.Equals(senderType, "Staff", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!empId.HasValue)
+                    throw new ArgumentException("senderEmpId is required for Staff");
+                return (int)empId.Value;
+            }
+
+            throw new ArgumentException($"Unsupported senderType: {senderType}");
+        }
+
+        public async Task<int> CrmGetOrCreateThreadAsync(string patientMrNo, string doctorLicenseNo)
+        {
+            var patientId = await ResolvePatientIdAsync(patientMrNo)
+                ?? throw new InvalidOperationException($"Patient not found for MRNO {patientMrNo}");
+
+            var doctorId = await ResolveDoctorIdAsync(doctorLicenseNo)
+                ?? throw new InvalidOperationException($"Doctor not found for LicenceNo {doctorLicenseNo}");
+
+            using var connection = CreateConnection();
+            var conversationId = await connection.QueryFirstOrDefaultAsync<int?>(
+                "EXEC dbo.SP_CreateOrGetConversation @User1Id, @User1Type, @User2Id, @User2Type",
+                new { User1Id = patientId, User1Type = "Patient", User2Id = doctorId, User2Type = "Doctor" });
+
+            if (conversationId == null || conversationId.Value <= 0)
+                throw new InvalidOperationException("Failed to create or get conversation");
+
+            return conversationId.Value;
+        }
+
+        public async Task<(int messageId, bool isDuplicate)> CrmInsertMessageAsync(
+            int conversationId, int senderId, string senderType, string messageType,
+            string? content, string? fileUrl, string? fileName, long? fileSize,
+            DateTime sentAt, Guid clientMessageId)
+        {
+            using var connection = CreateConnection();
+
+            // Idempotency check
+            var existingId = await connection.QueryFirstOrDefaultAsync<int?>(
+                "SELECT TOP 1 MessageId FROM dbo.MChatMessages WHERE ConversationId = @ConversationId AND ClientMessageId = @ClientMessageId",
+                new { ConversationId = conversationId, ClientMessageId = clientMessageId });
+
+            if (existingId.HasValue)
+                return (existingId.Value, true);
+
+            var sql = @"
+                INSERT INTO dbo.MChatMessages
+                    (ConversationId, SenderId, SenderType, MessageType, Content, FileUrl, FileName, FileSize, SentAt, IsDelivered, IsRead, IsDeleted, ClientMessageId)
+                VALUES
+                    (@ConversationId, @SenderId, @SenderType, @MessageType, @Content, @FileUrl, @FileName, @FileSize, @SentAt, 0, 0, 0, @ClientMessageId);
+                SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+            var messageId = await connection.QuerySingleAsync<int>(sql, new
+            {
+                ConversationId = conversationId,
+                SenderId = senderId,
+                SenderType = senderType,
+                MessageType = messageType,
+                Content = content,
+                FileUrl = fileUrl,
+                FileName = fileName,
+                FileSize = fileSize,
+                SentAt = sentAt,
+                ClientMessageId = clientMessageId
+            });
+
+            // Update conversation last message
+            var lastMsg = !string.IsNullOrWhiteSpace(content)
+                ? (content.Length > 500 ? content.Substring(0, 500) : content)
+                : !string.IsNullOrWhiteSpace(fileName)
+                    ? (fileName.Length > 500 ? fileName.Substring(0, 500) : fileName)
+                    : messageType;
+
+            await connection.ExecuteAsync(
+                "UPDATE dbo.MConversations SET LastMessageAt = @Now, LastMessage = @LastMessage WHERE ConversationId = @ConversationId",
+                new { Now = DateTime.UtcNow, LastMessage = lastMsg, ConversationId = conversationId });
+
+            return (messageId, false);
+        }
+
+        public async Task<List<CrmMessageUpdateRow>> CrmGetDoctorToPatientUpdatesAsync(DateTime sinceUtc, int limit)
+        {
+            if (limit <= 0) limit = 100;
+
+            using var connection = CreateConnection();
+
+            var sql = @"
+                SELECT TOP (@Limit)
+                    c.ConversationId,
+                    m.MessageId,
+                    m.SentAt,
+                    d.LicenceNo AS DoctorLicenseNo,
+                    u.MRNO AS PatientMrNo,
+                    m.MessageType,
+                    m.Content,
+                    m.FileUrl,
+                    m.FileName,
+                    m.FileSize
+                FROM dbo.MChatMessages m
+                INNER JOIN dbo.MConversations c ON c.ConversationId = m.ConversationId
+                INNER JOIN dbo.MConversationParticipants pDoctor ON pDoctor.ConversationId = c.ConversationId AND pDoctor.UserType = 'Doctor'
+                INNER JOIN dbo.MConversationParticipants pPatient ON pPatient.ConversationId = c.ConversationId AND pPatient.UserType = 'Patient'
+                INNER JOIN dbo.MDoctors d ON d.DId = pDoctor.UserId
+                INNER JOIN dbo.Users u ON u.Id = pPatient.UserId
+                WHERE m.SenderType = 'Doctor'
+                  AND m.SentAt > @SinceUtc
+                  AND m.IsDeleted = 0
+                ORDER BY m.SentAt ASC";
+
+            var rows = await connection.QueryAsync<CrmMessageUpdateRow>(sql, new { SinceUtc = sinceUtc, Limit = limit });
+            return rows.ToList();
+        }
+
+        public async Task<List<CrmConversationRow>> CrmGetPatientConversationsAsync(string patientMrNo, int limit)
+        {
+            if (limit <= 0) limit = 50;
+            limit = Math.Min(limit, 200);
+
+            using var connection = CreateConnection();
+
+            var sql = @"
+                SELECT TOP (@Limit)
+                    c.ConversationId,
+                    c.LastMessageAt,
+                    c.LastMessage AS LastMessagePreview,
+                    d.LicenceNo AS DoctorLicenseNo,
+                    d.DoctorName,
+                    d.Title AS DoctorTitle,
+                    d.DoctorPhotoName,
+                    (
+                        SELECT COUNT(1)
+                        FROM dbo.MChatMessages m
+                        WHERE m.ConversationId = c.ConversationId
+                          AND m.SenderType = 'Doctor'
+                          AND m.IsRead = 0
+                          AND m.IsDeleted = 0
+                    ) AS UnreadCount
+                FROM dbo.MConversations c
+                INNER JOIN dbo.MConversationParticipants pPatient
+                    ON pPatient.ConversationId = c.ConversationId
+                   AND pPatient.UserType = 'Patient'
+                INNER JOIN dbo.Users u
+                    ON u.Id = pPatient.UserId
+                INNER JOIN dbo.MConversationParticipants pDoctor
+                    ON pDoctor.ConversationId = c.ConversationId
+                   AND pDoctor.UserType = 'Doctor'
+                INNER JOIN dbo.MDoctors d
+                    ON d.DId = pDoctor.UserId
+                WHERE u.MRNO = @PatientMrNo
+                ORDER BY COALESCE(c.LastMessageAt, '1900-01-01') DESC, c.ConversationId DESC";
+
+            var rows = await connection.QueryAsync<CrmConversationRow>(sql, new { PatientMrNo = patientMrNo, Limit = limit });
+            return rows.ToList();
+        }
+
+        public async Task<(int conversationId, string channelTitle)> CrmGetOrCreateBroadcastChannelAsync(int patientUserId, string staffType)
+        {
+            using var connection = CreateConnection();
+
+            var result = await connection.QueryFirstOrDefaultAsync<dynamic>(
+                "EXEC dbo.SP_CreateOrGetBroadcastChannel @PatientUserId, @StaffType",
+                new { PatientUserId = patientUserId, StaffType = staffType });
+
+            if (result == null || (int)result.ConversationId <= 0)
+                throw new InvalidOperationException("Failed to create or get broadcast channel");
+
+            return ((int)result.ConversationId, (string)(result.ChannelTitle ?? $"{staffType} Support Channel"));
+        }
+
+        public async Task<List<CrmThreadMessageRow>> CrmGetThreadMessagesAsync(int conversationId, int take)
+        {
+            if (take <= 0) take = 50;
+
+            using var connection = CreateConnection();
+
+            var sql = @"
+                SELECT TOP (@Take)
+                    m.MessageId,
+                    m.SenderType,
+                    m.MessageType,
+                    m.Content,
+                    m.FileUrl,
+                    m.FileName,
+                    m.FileSize,
+                    m.SentAt
+                FROM dbo.MChatMessages m
+                WHERE m.ConversationId = @ConversationId
+                  AND m.IsDeleted = 0
+                ORDER BY m.SentAt DESC, m.MessageId DESC";
+
+            var rows = await connection.QueryAsync<CrmThreadMessageRow>(sql, new { ConversationId = conversationId, Take = take });
+            // Return ascending for UI rendering
+            return rows.OrderBy(x => x.SentAt).ThenBy(x => x.MessageId).ToList();
+        }
     }
 }

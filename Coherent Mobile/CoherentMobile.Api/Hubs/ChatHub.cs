@@ -23,6 +23,11 @@ namespace CoherentMobile.Api.Hubs
             var userId = GetUserId();
             var userType = GetUserType();
 
+            _logger.LogInformation(
+                "[ChatHub] OnConnected — ConnectionId={ConnectionId}, UserId={UserId}, UserType={UserType}, Claims=[{Claims}]",
+                Context.ConnectionId, userId, userType,
+                string.Join(", ", Context.User?.Claims.Select(c => $"{c.Type}={c.Value}") ?? Array.Empty<string>()));
+
             if (userId.HasValue && !string.IsNullOrEmpty(userType))
             {
                 var connectionId = Context.ConnectionId;
@@ -32,6 +37,10 @@ namespace CoherentMobile.Api.Hubs
                 await Clients.Others.UserOnline(userId.Value, userType);
                 
                 _logger.LogInformation("User {UserId} ({UserType}) connected with connection {ConnectionId}", userId, userType, connectionId);
+            }
+            else
+            {
+                _logger.LogWarning("[ChatHub] OnConnected — NO valid userId/userType. Client will NOT be able to join groups!");
             }
 
             await base.OnConnectedAsync();
@@ -61,19 +70,31 @@ namespace CoherentMobile.Api.Hubs
             var userId = GetUserId();
             var userType = GetUserType();
 
+            _logger.LogInformation(
+                "[ChatHub] JoinConversation called — ConversationId={ConversationId}, UserId={UserId}, UserType={UserType}, ConnectionId={ConnectionId}",
+                conversationId, userId, userType, Context.ConnectionId);
+
             if (!userId.HasValue || string.IsNullOrEmpty(userType))
             {
+                _logger.LogWarning(
+                    "[ChatHub] JoinConversation REJECTED — missing userId or userType. ConversationId={ConversationId}",
+                    conversationId);
                 return;
             }
 
             var conversation = await _chatService.GetConversationByIdAsync(conversationId, userId.Value, userType);
             if (conversation == null)
             {
+                _logger.LogWarning(
+                    "[ChatHub] JoinConversation REJECTED — conversation not found or user not participant. ConversationId={ConversationId}, UserId={UserId}, UserType={UserType}",
+                    conversationId, userId.Value, userType);
                 throw new HubException("You are not allowed to join this conversation");
             }
 
             await Groups.AddToGroupAsync(Context.ConnectionId, $"conversation_{conversationId}");
-            _logger.LogInformation("Connection {ConnectionId} joined conversation {ConversationId}", Context.ConnectionId, conversationId);
+            _logger.LogInformation(
+                "[ChatHub] JoinConversation SUCCESS — Connection {ConnectionId} added to group conversation_{ConversationId}",
+                Context.ConnectionId, conversationId);
         }
 
         public async Task LeaveConversation(int conversationId)
