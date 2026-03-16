@@ -389,11 +389,9 @@ namespace CoherentMobile.Application.Services
             return await _chatRepo.CrmGetDoctorToPatientUpdatesAsync(since.ToUniversalTime(), limit);
         }
 
-        public async Task<List<CrmConversationRow>> CrmGetConversationsAsync(string patientMrNo, int limit)
+        public async Task<CrmConversationListResult> CrmGetConversationListAsync(string? doctorLicenseNo, string? patientMrNo, int limit)
         {
-            if (string.IsNullOrWhiteSpace(patientMrNo))
-                throw new ArgumentException("patientMrNo is required");
-            return await _chatRepo.CrmGetPatientConversationsAsync(patientMrNo, limit);
+            return await _chatRepo.CrmGetConversationListAsync(doctorLicenseNo, patientMrNo, limit);
         }
 
         public async Task<(int conversationId, string channelTitle, string patientMrNo, string staffType)> CrmGetOrCreateBroadcastChannelAsync(string patientMrNo, string staffType)

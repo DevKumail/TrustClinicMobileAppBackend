@@ -19,7 +19,7 @@ public static class DependencyInjection
         // Register configuration
         services.Configure<AppointmentsApiSettings>(configuration.GetSection("AppointmentsApi"));
         services.Configure<PatientHealthApiSettings>(configuration.GetSection("PatientHealthApi"));
-        services.Configure<CrmChatApiSettings>(configuration.GetSection("CrmChatApi"));
+        // CrmChatApiSettings removed — V2 chat now uses direct DB
 
         // Register HTTP clients with typed clients pattern
         services.AddHttpClient<IHealthDataApiClient, HealthDataApiClient>()
@@ -47,12 +47,7 @@ public static class DependencyInjection
         .SetHandlerLifetime(TimeSpan.FromMinutes(5))
         .AddPolicyHandler(GetRetryPolicy());
 
-        services.AddHttpClient<ICrmChatApiClient, CrmChatApiClient>((serviceProvider, httpClient) =>
-        {
-            _ = serviceProvider.GetRequiredService<IOptions<CrmChatApiSettings>>().Value;
-        })
-        .SetHandlerLifetime(TimeSpan.FromMinutes(5))
-        .AddPolicyHandler(GetRetryPolicy());
+        // ICrmChatApiClient removed — V2 chat endpoints now use direct DB via ChatService
 
         return services;
     }

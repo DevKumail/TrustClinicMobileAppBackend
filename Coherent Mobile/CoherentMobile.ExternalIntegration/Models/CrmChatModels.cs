@@ -336,41 +336,5 @@ namespace CoherentMobile.ExternalIntegration.Models
         public int MessagesMarked { get; set; }
     }
 
-    public sealed class CrmStaffMessageWebhook
-    {
-        [JsonPropertyName("crmThreadId")]
-        public string CrmThreadId { get; set; } = string.Empty;
-
-        [JsonPropertyName("crmMessageId")]
-        public string CrmMessageId { get; set; } = string.Empty;
-
-        [JsonPropertyName("staffType")]
-        public string StaffType { get; set; } = string.Empty;
-
-        [JsonPropertyName("senderEmpId")]
-        public long SenderEmpId { get; set; }
-
-        [JsonPropertyName("patientMrNo")]
-        public string PatientMrNo { get; set; } = string.Empty;
-
-        [JsonPropertyName("messageType")]
-        public string MessageType { get; set; } = string.Empty;
-
-        [JsonPropertyName("content")]
-        public string? Content { get; set; }
-
-        [JsonPropertyName("fileUrl")]
-        public string? FileUrl { get; set; }
-
-        [JsonPropertyName("fileName")]
-        public string? FileName { get; set; }
-
-        [JsonPropertyName("fileSize")]
-        public long? FileSize { get; set; }
-
-        [JsonPropertyName("sentAt")]
-        public DateTime SentAt { get; set; }
-    }
-
     #endregion
 }

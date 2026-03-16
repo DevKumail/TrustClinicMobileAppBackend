@@ -78,14 +78,50 @@ builder.Services.AddAuthentication(options =>
     {
         OnMessageReceived = context =>
         {
-            var accessToken = context.Request.Query["access_token"];
             var path = context.HttpContext.Request.Path;
-            
-            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+
+            if (path.StartsWithSegments("/hubs"))
             {
-                context.Token = accessToken;
+                // 1) Check for CRM API key auth (for doctor/staff connections from Angular CRM UI)
+                var apiKey = context.Request.Query["api_key"].FirstOrDefault();
+                if (!string.IsNullOrWhiteSpace(apiKey))
+                {
+                    var expectedKey = context.HttpContext.RequestServices
+                        .GetRequiredService<IConfiguration>()["CrmSignalR:ApiKey"];
+
+                    if (!string.IsNullOrWhiteSpace(expectedKey) && apiKey == expectedKey)
+                    {
+                        var userId = context.Request.Query["user_id"].FirstOrDefault() ?? "0";
+                        var userType = context.Request.Query["user_type"].FirstOrDefault() ?? "Doctor";
+                        var userName = context.Request.Query["user_name"].FirstOrDefault() ?? "CRM User";
+                        var doctorLicenseNo = context.Request.Query["doctor_license_no"].FirstOrDefault() ?? "";
+
+                        var claims = new List<System.Security.Claims.Claim>
+                        {
+                            new(System.Security.Claims.ClaimTypes.NameIdentifier, userId),
+                            new("UserType", userType),
+                            new(System.Security.Claims.ClaimTypes.Name, userName),
+                            new("DoctorLicenseNo", doctorLicenseNo)
+                        };
+
+                        var identity = new System.Security.Claims.ClaimsIdentity(claims, "CrmApiKey");
+                        context.HttpContext.User = new System.Security.Claims.ClaimsPrincipal(identity);
+                        context.HttpContext.Items["IsCrmConnection"] = true;
+
+                        // Skip JWT validation — API key is sufficient
+                        context.NoResult();
+                        return Task.CompletedTask;
+                    }
+                }
+
+                // 2) Standard JWT token from query string (for mobile app connections)
+                var accessToken = context.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(accessToken))
+                {
+                    context.Token = accessToken;
+                }
             }
-            
+
             return Task.CompletedTask;
         }
     };

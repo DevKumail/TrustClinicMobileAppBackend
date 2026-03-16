@@ -103,6 +103,48 @@ namespace CoherentMobile.Api.Hubs
             _logger.LogInformation("Connection {ConnectionId} left conversation {ConversationId}", Context.ConnectionId, conversationId);
         }
 
+        /// <summary>
+        /// CRM-compatible join using thread ID format (CRM-TH-{conversationId}).
+        /// Maps to the same conversation group used by mobile clients.
+        /// </summary>
+        public async Task JoinThread(string crmThreadId)
+        {
+            if (string.IsNullOrWhiteSpace(crmThreadId))
+                throw new HubException("crmThreadId is required");
+
+            var idStr = crmThreadId.StartsWith("CRM-TH-", StringComparison.OrdinalIgnoreCase)
+                ? crmThreadId.Substring("CRM-TH-".Length)
+                : crmThreadId;
+
+            if (!int.TryParse(idStr, out var conversationId) || conversationId <= 0)
+                throw new HubException($"Invalid crmThreadId: {crmThreadId}");
+
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"conversation_{conversationId}");
+            _logger.LogInformation(
+                "[ChatHub] JoinThread — Connection {ConnectionId} joined conversation_{ConversationId} via CRM thread {CrmThreadId}",
+                Context.ConnectionId, conversationId, crmThreadId);
+        }
+
+        /// <summary>
+        /// CRM-compatible leave using thread ID format.
+        /// </summary>
+        public async Task LeaveThread(string crmThreadId)
+        {
+            if (string.IsNullOrWhiteSpace(crmThreadId))
+                throw new HubException("crmThreadId is required");
+
+            var idStr = crmThreadId.StartsWith("CRM-TH-", StringComparison.OrdinalIgnoreCase)
+                ? crmThreadId.Substring("CRM-TH-".Length)
+                : crmThreadId;
+
+            if (int.TryParse(idStr, out var conversationId) && conversationId > 0)
+            {
+                await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"conversation_{conversationId}");
+                _logger.LogInformation("Connection {ConnectionId} left conversation_{ConversationId} via CRM thread {CrmThreadId}",
+                    Context.ConnectionId, conversationId, crmThreadId);
+            }
+        }
+
         public async Task SendMessage(SendMessageRequestDto request)
         {
             try

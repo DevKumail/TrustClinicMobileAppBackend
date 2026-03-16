@@ -15,16 +15,20 @@ namespace CoherentMobile.Api.Controllers
     {
         private readonly IChatService _chatService;
         private readonly IChatRepository _chatRepository;
+        private readonly IChatHubNotifier _chatHubNotifier;
         private readonly ILogger<ChatController> _logger;
 
-        public ChatController(IChatService chatService, IChatRepository chatRepository, ILogger<ChatController> logger)
+        public ChatController(IChatService chatService, IChatRepository chatRepository, IChatHubNotifier chatHubNotifier, ILogger<ChatController> logger)
         {
             _chatService = chatService;
             _chatRepository = chatRepository;
+            _chatHubNotifier = chatHubNotifier;
             _logger = logger;
         }
 
-        [HttpPost("/api/v2/chat/threads/get-or-create")]
+        #region Verified Code 
+
+        [HttpPost("/api/chat/get-or-create")]
         [AllowAnonymous]
         public async Task<IActionResult> CrmGetOrCreateThread([FromBody] CrmGetOrCreateThreadRequest request)
         {
@@ -45,9 +49,9 @@ namespace CoherentMobile.Api.Controllers
             }
         }
 
-        [HttpPost("/api/v2/chat/messages")]
+        [HttpPost("/api/chat/messages")]
         [AllowAnonymous]
-        public async Task<IActionResult> CrmSendMessage([FromBody] CrmSendMessageRequest request)
+        public async Task<IActionResult> SendMessage([FromBody] CrmSendMessageRequest request)
         {
             try
             {
@@ -58,6 +62,35 @@ namespace CoherentMobile.Api.Controllers
                     request.SenderEmpId, request.ReceiverType, request.MessageType,
                     request.Content, request.FileUrl, request.FileName, request.FileSize,
                     clientMsgId, request.SentAt);
+
+                // Broadcast to connected SignalR clients in this conversation
+                try
+                {
+                    var idStr = crmThreadId.StartsWith("CRM-TH-", StringComparison.OrdinalIgnoreCase)
+                        ? crmThreadId.Substring("CRM-TH-".Length) : crmThreadId;
+                    if (int.TryParse(idStr, out var convId))
+                    {
+                        var msgDto = new ChatMessageDto
+                        {
+                            MessageId = messageId,
+                            ConversationId = convId,
+                            SenderType = request.SenderType ?? "",
+                            MessageType = request.MessageType ?? "Text",
+                            Content = request.Content,
+                            FileUrl = request.FileUrl,
+                            FileName = request.FileName,
+                            FileSize = request.FileSize,
+                            SentAt = request.SentAt ?? DateTime.UtcNow,
+                            CrmMessageId = $"CRM-MSG-{messageId}",
+                            CrmThreadId = crmThreadId
+                        };
+                        await _chatHubNotifier.SendMessageToConversationAsync(convId, msgDto);
+                    }
+                }
+                catch (Exception hubEx)
+                {
+                    _logger.LogError(hubEx, "Failed to broadcast message {MessageId} via ChatHub", messageId);
+                }
 
                 return Ok(new
                 {
@@ -74,7 +107,7 @@ namespace CoherentMobile.Api.Controllers
             }
         }
 
-        [HttpGet("/api/v2/chat/messages/updates")]
+        [HttpGet("/api/chat/updates")]
         [AllowAnonymous]
         public async Task<IActionResult> CrmGetMessageUpdates([FromQuery] DateTime since, [FromQuery] int limit = 100)
         {
@@ -104,48 +137,18 @@ namespace CoherentMobile.Api.Controllers
             }
         }
 
-        [HttpGet("/api/v2/chat/conversations")]
+        [HttpGet("/api/chat/conversations")]
         [AllowAnonymous]
-        public async Task<IActionResult> CrmGetConversations([FromQuery] string patientMrNo, [FromQuery] int limit = 50)
+        public async Task<IActionResult> CrmGetConversations([FromQuery] string? doctorLicenseNo, [FromQuery] string? patientMrNo, [FromQuery] int limit = 50)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(patientMrNo))
-                    return BadRequest(new { message = "patientMrNo is required" });
-
-                var rows = await _chatService.CrmGetConversationsAsync(patientMrNo, limit);
-
-                var baseUrl = $"{Request.Scheme}://{Request.Host}";
-                var conversations = rows.Select(r =>
-                {
-                    var photo = r.DoctorPhotoName;
-                    if (!string.IsNullOrWhiteSpace(photo) && !Uri.TryCreate(photo, UriKind.Absolute, out _))
-                        photo = $"{baseUrl}/images/doctors/{photo.TrimStart('/')}";
-
-                    return new
-                    {
-                        conversationId = r.ConversationId.ToString(),
-                        crmThreadId = $"CRM-TH-{r.ConversationId}",
-                        lastMessageAt = r.LastMessageAt,
-                        lastMessagePreview = r.LastMessagePreview,
-                        unreadCount = r.UnreadCount,
-                        counterpart = new
-                        {
-                            userType = "Doctor",
-                            doctorLicenseNo = r.DoctorLicenseNo,
-                            doctorName = r.DoctorName,
-                            doctorTitle = r.DoctorTitle,
-                            doctorPhotoName = photo
-                        }
-                    };
-                }).ToList();
-
-                return Ok(new
-                {
-                    patientMrNo,
-                    serverTimeUtc = DateTime.UtcNow,
-                    conversations
-                });
+                var result = await _chatService.CrmGetConversationListAsync(doctorLicenseNo, patientMrNo, limit);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -153,6 +156,10 @@ namespace CoherentMobile.Api.Controllers
                 return StatusCode(500, new { message = "An error occurred while getting conversations" });
             }
         }
+
+
+        #endregion
+
 
         #region Broadcast Channel APIs (Patient -> Staff)
 
@@ -361,33 +368,6 @@ namespace CoherentMobile.Api.Controllers
             {
                 _logger.LogError(ex, "Error getting messages for conversation {ConversationId}", conversationId);
                 return StatusCode(500, new { message = "An error occurred while retrieving messages" });
-            }
-        }
-
-        /// <summary>
-        /// Send a message (also available via SignalR)
-        /// </summary>
-        [HttpPost("messages")]
-        [ProducesResponseType(typeof(ChatMessageDto), 200)]
-        public async Task<IActionResult> SendMessage([FromBody] SendMessageRequestDto request)
-        {
-            try
-            {
-                var (userId, userType) = GetCurrentUser();
-                if (userId == 0) return Unauthorized();
-
-                var message = await _chatService.SendMessageAsync(userId, userType, request);
-                return Ok(message);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning(ex, "Unauthorized message send attempt");
-                return Forbid();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending message");
-                return StatusCode(500, new { message = "An error occurred while sending message" });
             }
         }
 

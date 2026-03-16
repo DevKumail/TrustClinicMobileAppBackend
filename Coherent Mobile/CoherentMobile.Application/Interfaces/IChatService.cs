@@ -33,7 +33,7 @@ namespace CoherentMobile.Application.Interfaces
 
         Task<List<CrmMessageUpdateRow>> CrmGetMessageUpdatesAsync(DateTime since, int limit);
 
-        Task<List<CrmConversationRow>> CrmGetConversationsAsync(string patientMrNo, int limit);
+        Task<CrmConversationListResult> CrmGetConversationListAsync(string? doctorLicenseNo, string? patientMrNo, int limit);
 
         Task<(int conversationId, string channelTitle, string patientMrNo, string staffType)> CrmGetOrCreateBroadcastChannelAsync(string patientMrNo, string staffType);
 

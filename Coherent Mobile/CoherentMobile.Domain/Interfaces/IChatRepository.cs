@@ -69,8 +69,8 @@ namespace CoherentMobile.Domain.Interfaces
         /// <summary>Get doctor→patient message updates since a timestamp</summary>
         Task<List<CrmMessageUpdateRow>> CrmGetDoctorToPatientUpdatesAsync(DateTime sinceUtc, int limit);
 
-        /// <summary>Get patient's conversation list with doctor info</summary>
-        Task<List<CrmConversationRow>> CrmGetPatientConversationsAsync(string patientMrNo, int limit);
+        /// <summary>Get conversation list (either by doctorLicenseNo or patientMrNo, not both)</summary>
+        Task<CrmConversationListResult> CrmGetConversationListAsync(string? doctorLicenseNo, string? patientMrNo, int limit);
 
         /// <summary>Get or create broadcast channel via SP</summary>
         Task<(int conversationId, string channelTitle)> CrmGetOrCreateBroadcastChannelAsync(int patientUserId, string staffType);

@@ -544,46 +544,126 @@ namespace CoherentMobile.Infrastructure.Repositories
             return rows.ToList();
         }
 
-        public async Task<List<CrmConversationRow>> CrmGetPatientConversationsAsync(string patientMrNo, int limit)
+        public async Task<CrmConversationListResult> CrmGetConversationListAsync(string? doctorLicenseNo, string? patientMrNo, int limit)
         {
             if (limit <= 0) limit = 50;
             limit = Math.Min(limit, 200);
 
+            var hasDoctor = !string.IsNullOrWhiteSpace(doctorLicenseNo);
+            var hasPatient = !string.IsNullOrWhiteSpace(patientMrNo);
+
+            if (hasDoctor == hasPatient)
+                throw new ArgumentException("Either doctorLicenseNo or patientMrNo must be provided (but not both)");
+
             using var connection = CreateConnection();
 
-            var sql = @"
-                SELECT TOP (@Limit)
-                    c.ConversationId,
-                    c.LastMessageAt,
-                    c.LastMessage AS LastMessagePreview,
-                    d.LicenceNo AS DoctorLicenseNo,
-                    d.DoctorName,
-                    d.Title AS DoctorTitle,
-                    d.DoctorPhotoName,
-                    (
-                        SELECT COUNT(1)
-                        FROM dbo.MChatMessages m
-                        WHERE m.ConversationId = c.ConversationId
-                          AND m.SenderType = 'Doctor'
-                          AND m.IsRead = 0
-                          AND m.IsDeleted = 0
-                    ) AS UnreadCount
-                FROM dbo.MConversations c
-                INNER JOIN dbo.MConversationParticipants pPatient
-                    ON pPatient.ConversationId = c.ConversationId
-                   AND pPatient.UserType = 'Patient'
-                INNER JOIN dbo.Users u
-                    ON u.Id = pPatient.UserId
-                INNER JOIN dbo.MConversationParticipants pDoctor
-                    ON pDoctor.ConversationId = c.ConversationId
-                   AND pDoctor.UserType = 'Doctor'
-                INNER JOIN dbo.MDoctors d
-                    ON d.DId = pDoctor.UserId
-                WHERE u.MRNO = @PatientMrNo
-                ORDER BY COALESCE(c.LastMessageAt, '1900-01-01') DESC, c.ConversationId DESC";
+            if (hasDoctor)
+            {
+                // Doctor side — counterpart is Patient
+                var sql = @"
+                    SELECT TOP (@Limit)
+                        c.ConversationId,
+                        c.LastMessageAt,
+                        c.LastMessage AS LastMessagePreview,
+                        pPatient.UserId AS PatientUserId,
+                        u.MRNO AS PatientMrNo,
+                        COALESCE(NULLIF(u.FullName, ''), NULLIF(u.MRNO, ''), CAST(u.Id AS NVARCHAR(50))) AS PatientName,
+                        (
+                            SELECT COUNT(1)
+                            FROM dbo.MChatMessages m
+                            WHERE m.ConversationId = c.ConversationId
+                              AND m.SenderType = 'Patient'
+                              AND m.IsRead = 0
+                              AND m.IsDeleted = 0
+                        ) AS UnreadCount
+                    FROM dbo.MConversations c
+                    INNER JOIN dbo.MConversationParticipants pDoctor
+                        ON pDoctor.ConversationId = c.ConversationId AND pDoctor.UserType = 'Doctor'
+                    INNER JOIN dbo.MDoctors d
+                        ON d.DId = pDoctor.UserId
+                    INNER JOIN dbo.MConversationParticipants pPatient
+                        ON pPatient.ConversationId = c.ConversationId AND pPatient.UserType = 'Patient'
+                    INNER JOIN dbo.Users u
+                        ON u.Id = pPatient.UserId
+                    WHERE d.LicenceNo = @DoctorLicenseNo
+                    ORDER BY COALESCE(c.LastMessageAt, '1900-01-01') DESC, c.ConversationId DESC";
 
-            var rows = await connection.QueryAsync<CrmConversationRow>(sql, new { PatientMrNo = patientMrNo, Limit = limit });
-            return rows.ToList();
+                var rows = await connection.QueryAsync<dynamic>(sql, new { DoctorLicenseNo = doctorLicenseNo, Limit = limit });
+
+                var result = new CrmConversationListResult { DoctorLicenseNo = doctorLicenseNo };
+                foreach (var row in rows)
+                {
+                    result.Conversations.Add(new CrmConversationListItem
+                    {
+                        ConversationId = (int)row.ConversationId,
+                        LastMessageAt = row.LastMessageAt,
+                        LastMessagePreview = row.LastMessagePreview,
+                        UnreadCount = (int)(row.UnreadCount ?? 0),
+                        Counterpart = new CrmConversationCounterpart
+                        {
+                            UserType = "Patient",
+                            PatientMrNo = row.PatientMrNo,
+                            PatientName = row.PatientName
+                        }
+                    });
+                }
+                return result;
+            }
+
+            // Patient side — counterpart is Doctor
+            {
+                var sql = @"
+                    SELECT TOP (@Limit)
+                        c.ConversationId,
+                        c.LastMessageAt,
+                        c.LastMessage AS LastMessagePreview,
+                        d.LicenceNo AS DoctorLicenseNo,
+                        d.DoctorName,
+                        d.Title,
+                        d.DoctorPhotoName,
+                        (
+                            SELECT COUNT(1)
+                            FROM dbo.MChatMessages m
+                            WHERE m.ConversationId = c.ConversationId
+                              AND m.SenderType = 'Doctor'
+                              AND m.IsRead = 0
+                              AND m.IsDeleted = 0
+                        ) AS UnreadCount
+                    FROM dbo.MConversations c
+                    INNER JOIN dbo.MConversationParticipants pPatient
+                        ON pPatient.ConversationId = c.ConversationId AND pPatient.UserType = 'Patient'
+                    INNER JOIN dbo.Users u
+                        ON u.Id = pPatient.UserId
+                    INNER JOIN dbo.MConversationParticipants pDoctor
+                        ON pDoctor.ConversationId = c.ConversationId AND pDoctor.UserType = 'Doctor'
+                    INNER JOIN dbo.MDoctors d
+                        ON d.DId = pDoctor.UserId
+                    WHERE u.MRNO = @PatientMrNo
+                    ORDER BY COALESCE(c.LastMessageAt, '1900-01-01') DESC, c.ConversationId DESC";
+
+                var rows = await connection.QueryAsync<dynamic>(sql, new { PatientMrNo = patientMrNo, Limit = limit });
+
+                var result = new CrmConversationListResult { PatientMrNo = patientMrNo };
+                foreach (var row in rows)
+                {
+                    result.Conversations.Add(new CrmConversationListItem
+                    {
+                        ConversationId = (int)row.ConversationId,
+                        LastMessageAt = row.LastMessageAt,
+                        LastMessagePreview = row.LastMessagePreview,
+                        UnreadCount = (int)(row.UnreadCount ?? 0),
+                        Counterpart = new CrmConversationCounterpart
+                        {
+                            UserType = "Doctor",
+                            DoctorLicenseNo = row.DoctorLicenseNo,
+                            DoctorName = row.DoctorName,
+                            DoctorTitle = row.Title,
+                            DoctorPhotoName = row.DoctorPhotoName
+                        }
+                    });
+                }
+                return result;
+            }
         }
 
         public async Task<(int conversationId, string channelTitle)> CrmGetOrCreateBroadcastChannelAsync(int patientUserId, string staffType)
@@ -594,10 +674,15 @@ namespace CoherentMobile.Infrastructure.Repositories
                 "EXEC dbo.SP_CreateOrGetBroadcastChannel @PatientUserId, @StaffType",
                 new { PatientUserId = patientUserId, StaffType = staffType });
 
-            if (result == null || (int)result.ConversationId <= 0)
+            if (result == null)
                 throw new InvalidOperationException("Failed to create or get broadcast channel");
 
-            return ((int)result.ConversationId, (string)(result.ChannelTitle ?? $"{staffType} Support Channel"));
+            int convId = (int)result.ConversationId;
+            if (convId <= 0)
+                throw new InvalidOperationException("Failed to create or get broadcast channel");
+
+            string title = result.ChannelTitle != null ? (string)result.ChannelTitle : $"{staffType} Support Channel";
+            return (convId, title);
         }
 
         public async Task<List<CrmThreadMessageRow>> CrmGetThreadMessagesAsync(int conversationId, int take)
