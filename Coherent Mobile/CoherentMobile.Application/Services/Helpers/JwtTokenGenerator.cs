@@ -28,7 +28,8 @@ public class JwtTokenGenerator
             new Claim("mrno", mrno),
             new Claim("fullName", fullName),
             new Claim("email", email ?? string.Empty),
-            new Claim(ClaimTypes.NameIdentifier, patientId.ToString())
+            new Claim(ClaimTypes.NameIdentifier, patientId.ToString()),
+            new Claim("UserType", "Patient")
         };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Secret"]!));

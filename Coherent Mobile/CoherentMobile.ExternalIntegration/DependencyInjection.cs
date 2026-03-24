@@ -30,19 +30,26 @@ public static class DependencyInjection
             .SetHandlerLifetime(TimeSpan.FromMinutes(5))
             .AddPolicyHandler(GetRetryPolicy());
             
-        // Configure AppointmentApiClient with base URL from configuration
+        // Configure AppointmentApiClient with base URL and X-Security-Key header
         services.AddHttpClient<IAppointmentApiClient, AppointmentApiClient>((serviceProvider, httpClient) =>
         {
             var settings = serviceProvider.GetRequiredService<IOptions<AppointmentsApiSettings>>().Value;
             httpClient.BaseAddress = new Uri(settings.BaseUrl);
+            var securityKey = configuration["WebPortalApi:SecurityKey"];
+            if (!string.IsNullOrWhiteSpace(securityKey))
+                httpClient.DefaultRequestHeaders.Add("X-Security-Key", securityKey);
         })
         .SetHandlerLifetime(TimeSpan.FromMinutes(5))
         .AddPolicyHandler(GetRetryPolicy());
 
+        // Configure PatientHealthApiClient with base URL and X-Security-Key header
         services.AddHttpClient<IPatientHealthApiClient, PatientHealthApiClient>((serviceProvider, httpClient) =>
         {
             var settings = serviceProvider.GetRequiredService<IOptions<PatientHealthApiSettings>>().Value;
             httpClient.BaseAddress = new Uri(settings.BaseUrl);
+            var securityKey = configuration["WebPortalApi:SecurityKey"];
+            if (!string.IsNullOrWhiteSpace(securityKey))
+                httpClient.DefaultRequestHeaders.Add("X-Security-Key", securityKey);
         })
         .SetHandlerLifetime(TimeSpan.FromMinutes(5))
         .AddPolicyHandler(GetRetryPolicy());
